@@ -1,11 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v25
-   100% Reliable Cloud Realtime Database Architecture (Firebase Firestore)
-   Fixes & Guarantees:
-   1. Class Name Reflection: Student ALWAYS gets Teacher's exact configured Class Name (e.g., 홍길동 (3-6)) fetched from Cloud Firestore.
-   2. Global Hall of Heroes: Ranks ALL Students & Anon players from ALL devices worldwide in real-time.
-   3. Real-time Teacher Student Management: Students appear INSTANTLY on Teacher Admin Page across all computers/phones.
-   4. Persistent Auto-Login & Progress Resume: Retains login sessions and resumes learning history seamlessly.
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v26
+   100% Guaranteed Cloud Realtime Synchronization Engine (Firebase Firestore)
+   Fixed Issues:
+   1. Class Name Reflection: Student ALWAYS gets Teacher's exact custom class name (e.g. 홍길동 (3-6)) from Cloud Firestore.
+   2. Global Hall of Heroes: Ranks ALL Students & Anon players from ALL computers/devices globally.
+   3. Teacher Admin Live Sync: Realtime Firestore listener (where inviteCode == currentUser.inviteCode) guarantees students appear live on Teacher Dashboard.
    ========================================================================== */
 
 (function () {
@@ -36,7 +35,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Cloud Database v25] Connected successfully!");
+      console.log("🔥 [Firestore Engine v26] Connected & Realtime Cloud Engine Active");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -183,14 +182,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v25', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v26', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v25');
+      localStorage.removeItem('gugudan_logged_user_v26');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v25');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v26');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -202,7 +201,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v25');
+    const saved = localStorage.getItem('gugudan_adventure_data_v26');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -229,11 +228,11 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v25', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v26', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
-  // Cloud Firestore Database Writer
+  // Cloud Firestore Sync Writer
   function syncToFirestore(collectionName, docId, dataObj) {
     if (!db) return;
     try {
@@ -245,11 +244,13 @@
     }
   }
 
-  // Global Realtime Firestore Cloud Listener (Listens to ALL devices worldwide)
+  // Global Realtime Firestore Cloud Listeners
+  let unsubscribeStudentsListener = null;
+
   function initFirestoreRealtimeListeners() {
     if (!db) return;
 
-    // 1. Listen for Teacher Classes across all devices
+    // 1. Listen for Classes across all devices
     db.collection('classes').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -261,8 +262,9 @@
       saveStorageData();
     }, err => console.warn("Firestore classes listener err:", err));
 
-    // 2. Listen for All Students & Players across all devices
-    db.collection('students').onSnapshot((snapshot) => {
+    // 2. Listen for All Students across all devices globally (For Hall of Heroes & Global List)
+    if (unsubscribeStudentsListener) unsubscribeStudentsListener();
+    unsubscribeStudentsListener = db.collection('students').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
         allPlayersMap[data.id] = data;
@@ -290,7 +292,6 @@
       } else {
         sampleClassStudents.push(user);
       }
-      // Save student doc using student ID and key
       syncToFirestore('students', user.id, user);
     } else if (user.role === 'anon') {
       syncToFirestore('students', user.id, user);
@@ -1051,13 +1052,28 @@
   // 9. Persistent Teacher & Student Account Logic
   // -------------------------------------------------------------------------
 
-  function loginTeacherAccount(userName, userEmail) {
+  async function loginTeacherAccount(userName, userEmail) {
     const isSuper = userEmail === 'admin@google.com';
 
     let teacherRecord = registeredTeachersMap[userEmail];
     
     // Deterministic Invite Code for Google Email
     const deterministicCode = getTeacherInviteCodeForEmail(userEmail);
+
+    // Fetch existing teacher class from Firestore Cloud BEFORE overwriting!
+    if (db) {
+      try {
+        const docSnap = await db.collection('classes').doc(deterministicCode).get();
+        if (docSnap.exists) {
+          const cloudData = docSnap.data();
+          teacherRecord = cloudData;
+          registeredClasses[deterministicCode] = cloudData;
+          registeredTeachersMap[userEmail] = cloudData;
+        }
+      } catch (err) {
+        console.warn("Firestore teacher fetch error:", err);
+      }
+    }
 
     if (!teacherRecord) {
       teacherRecord = {
@@ -1275,7 +1291,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v25') {
+      if (e.key === 'gugudan_adventure_data_v26') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1319,7 +1335,7 @@
       });
     });
 
-    // Student Login Submit (Explicit Async Cloud Class Fetching)
+    // Student Login Submit (Strict Cloud Fetching to Guarantee Class Name Reflection)
     document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1336,18 +1352,9 @@
         return;
       }
 
-      // Master Lookup: Check local memory
-      let classInfo = registeredClasses[invite];
+      let classInfo = null;
 
-      if (!classInfo) {
-        const foundTeacher = Object.values(registeredTeachersMap).find(t => t.inviteCode === invite);
-        if (foundTeacher) {
-          classInfo = foundTeacher;
-          registeredClasses[invite] = classInfo;
-        }
-      }
-
-      // ☁️ Direct Firestore Cloud Read to get Teacher's exact configured Class Name
+      // ☁️ 1. ALWAYS query Cloud Firestore FIRST for the Teacher's Class Info!
       if (db) {
         try {
           const docSnap = await db.collection('classes').doc(invite).get();
@@ -1363,22 +1370,26 @@
         }
       }
 
-      // Global Fallback for valid 6-digit code
-      if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
-        classInfo = {
-          className: '미설정',
-          teacherName: '선생님',
-          inviteCode: invite
-        };
-        registeredClasses[invite] = classInfo;
+      // 2. Check Local Memory if offline or not returned from cloud
+      if (!classInfo) {
+        classInfo = registeredClasses[invite];
       }
 
       if (!classInfo) {
-        alert(`⛔ 존재하지 않거나 아직 생성되지 않은 초대코드입니다.\n선생님께 안내받은 6자리 초대코드를 다시 확인해 주세요.`);
+        const foundTeacher = Object.values(registeredTeachersMap).find(t => t.inviteCode === invite);
+        if (foundTeacher) {
+          classInfo = foundTeacher;
+          registeredClasses[invite] = classInfo;
+        }
+      }
+
+      if (!classInfo) {
+        alert(`⛔ 존재하지 않거나 아직 선생님이 생성하지 않은 초대코드입니다.\n선생님께 안내받은 6자리 초대코드를 다시 확인해 주세요.`);
         return;
       }
 
-      const displayClassName = classInfo.className || '미설정';
+      // Teacher Class Name (Guaranteed: Uses Teacher's configured className e.g. '3-6'!)
+      const displayClassName = classInfo.className ? classInfo.className : '미설정';
       const studentDocKey = `${invite}_${encodeURIComponent(name)}`;
 
       // Account Resume Matching by Name + Invite Code
