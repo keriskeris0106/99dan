@@ -501,12 +501,13 @@
         </div>
 
         <div class="form-group">
-          <label for="teacherCodeInput">6자리 학급 코드 (원하는 숫자 6자리 입력)</label>
-          <input type="text" id="teacherCodeInput" placeholder="예: 306001 또는 원하는 6자리 숫자" maxlength="6" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
+          <label for="teacherCodeInput">6자리 학급 코드 (학급코드는 꼭 기억해주세요)</label>
+          <input type="text" id="teacherCodeInput" placeholder="예: 306001 (숫자 6자리)" maxlength="6" pattern="[0-9]*" inputmode="numeric" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
+          <div id="teacherCodeWarning" class="code-warning-red hidden">⚠️ 이미 개설된 학급 코드입니다. (선생님 본인이시면 계속 접속하세요)</div>
         </div>
 
         <div class="form-group">
-          <label for="teacherNameInput">선생님 성함 / 별명 (선택)</label>
+          <label for="teacherNameInput">선생님 닉네임 (관리 페이지에서 변경 가능)</label>
           <input type="text" id="teacherNameInput" placeholder="예: 박선생님" style="font-size: 1rem; padding: 10px 12px;">
         </div>
 
@@ -535,10 +536,14 @@
   <div class="modal-backdrop" id="classConfigModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h2>✏️ 클래스 이름 설정 (학반 고유 이름)</h2>
-        <p>우리 반만의 고유 클래스 이름을 입력해주세요 (필수 입력).</p>
+        <h2>✏️ 학반 정보 & 선생님 닉네임 변경</h2>
+        <p>우리 반 클래스 이름과 선생님 닉네임을 설정해주세요.</p>
       </div>
       <form id="classConfigForm">
+        <div class="form-group">
+          <label for="editTeacherNameInput">선생님 닉네임 (예: 박선생님)</label>
+          <input type="text" id="editTeacherNameInput" placeholder="예: 박선생님" required style="font-size: 1.05rem; padding: 10px 12px; margin-bottom: 12px;">
+        </div>
         <div class="form-group">
           <label for="editClassNameInput">클래스 이름 (예: 3-6 또는 꿈나무 3-6)</label>
           <input type="text" id="editClassNameInput" placeholder="예: 3-6" required style="font-size: 1.1rem; padding: 12px 14px;">
@@ -548,7 +553,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" id="closeClassConfigModalBtn">취소</button>
-          <button type="submit" class="btn btn-primary">💾 클래스 이름 저장하기</button>
+          <button type="submit" class="btn btn-primary">💾 설정 저장하기</button>
         </div>
       </form>
     </div>

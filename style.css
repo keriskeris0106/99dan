@@ -906,6 +906,30 @@ body.in-dungeon {
 .rank-top2 { color: #475569; font-weight: 800; }
 .rank-top3 { color: #B45309; font-weight: 800; }
 
+.rank-table tr.my-row-highlight, .mini-rank-table tr.my-row-highlight {
+  background-color: rgba(124, 58, 237, 0.12) !important;
+  border-left: 4px solid #7C3AED;
+}
+
+.rank-table tr.my-row-highlight td, .mini-rank-table tr.my-row-highlight td {
+  font-weight: 900 !important;
+  color: #4C1D95 !important;
+  text-shadow: 0 0 6px rgba(124, 58, 237, 0.3);
+}
+
+.code-warning-red {
+  color: #DC2626;
+  font-size: 0.88rem;
+  font-weight: 800;
+  margin-top: 6px;
+  text-align: center;
+  background-color: #FEF2F2;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid #FCA5A5;
+}
+
+
 .my-rank-banner {
   background: linear-gradient(135deg, #FEF3C7, #FDE68A);
   border: 2px solid #F59E0B;

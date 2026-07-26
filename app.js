@@ -1,10 +1,12 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v33
-   100% Bulletproof 6-Digit Class Code Teacher Access Engine
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v34
+   Enhanced Hall of Heroes & Teacher Settings Update Engine
    Fixes & Guarantees:
-   1. Zero Google Auth Errors: Teacher enters a 6-digit class code (e.g. 306001) to open/access their class instantly!
-   2. Full Cumulative Reports: Teachers can continuously monitor student gold, weak table charts, and game clears.
-   3. Real-time Cloud Sync across all student devices & teacher dashboard maintained 100%.
+   1. Exclude 0-score players: Gold & Weekly Diligence rankings filter out 0-value users.
+   2. Highlight Student's Own Rank Row: Highlighting with text-glow in Hall of Heroes.
+   3. Below-Top-10 Rank Banner: Displays current user's rank & gold if outside Top 10.
+   4. Editable Teacher Nickname: Teacher can change nickname in Class Settings Modal.
+   5. Strict 6-Digit Numeric Restrictions & Real-time Red Code Warning: Restricts non-digits & alerts if code is already registered.
    ========================================================================== */
 
 (function () {
@@ -36,7 +38,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v33] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v34] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -189,14 +191,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v33', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v34', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v33');
+      localStorage.removeItem('gugudan_logged_user_v34');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v33');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v34');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -208,7 +210,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v33');
+    const saved = localStorage.getItem('gugudan_adventure_data_v34');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -235,7 +237,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v33', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v34', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
@@ -1004,6 +1006,8 @@
 
     if (category === 'gold') {
       scoreHeader.textContent = '누적 골드';
+      // Exclude 0 gold users from ranking
+      list = list.filter(u => (u.totalGold || 0) > 0);
       list.sort((a, b) => (b.totalGold || 0) - (a.totalGold || 0));
       getScoreVal = u => (u.totalGold || 0);
     } else if (category === 'boss') {
@@ -1013,6 +1017,8 @@
       getScoreVal = u => parseFloat(u.bossFastestTime || 9999);
     } else if (category === 'diligence') {
       scoreHeader.textContent = '주간 푼 문제';
+      // Exclude 0 weekly solved users from ranking
+      list = list.filter(u => (u.weeklySolved || 0) > 0);
       list.sort((a, b) => (b.weeklySolved || 0) - (a.weeklySolved || 0));
       getScoreVal = u => (u.weeklySolved || 0);
     }
@@ -1032,6 +1038,13 @@
       top10Ranked.forEach((item) => {
         const u = item.user;
         const tr = document.createElement('tr');
+
+        // Check if this row is current logged-in user
+        const isMyRow = currentUser && (u.id === currentUser.id);
+        if (isMyRow) {
+          tr.className = 'my-row-highlight';
+        }
+
         let rankStyle = '';
         if (item.rankNum === 1) rankStyle = 'rank-top1';
         else if (item.rankNum === 2) rankStyle = 'rank-top2';
@@ -1044,7 +1057,7 @@
 
         tr.innerHTML = `
           <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
-          <td>${getFullUserTitleString(u)}</td>
+          <td>${getFullUserTitleString(u)} ${isMyRow ? '📍 (나)' : ''}</td>
           <td>${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
         `;
@@ -1052,6 +1065,7 @@
       });
     }
 
+    // Handle My Rank Banner for users outside Top 10
     const myRankBanner = document.getElementById('myRankBanner');
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
       const myItem = rankedList.find(item => item.user.id === currentUser.id);
@@ -1100,9 +1114,12 @@
           const u = item.user;
           const count = getClearVal(u);
           const tr = document.createElement('tr');
+          const isMyRow = currentUser && (u.id === currentUser.id);
+          if (isMyRow) tr.className = 'my-row-highlight';
+
           tr.innerHTML = `
             <td><strong>${item.rankDisplay}</strong></td>
-            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)}</td>
+            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${isMyRow ? '📍(나)' : ''}</td>
             <td><strong>${count}회</strong></td>
           `;
           tbody.appendChild(tr);
@@ -1124,14 +1141,14 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. 6-Digit Class Code Teacher Access Logic (100% Guaranteed Bulletproof!)
+  // 9. 6-Digit Class Code Teacher Access Logic
   // -------------------------------------------------------------------------
 
   async function loginTeacherByClassCode(inviteCode, teacherCustomName = '') {
-    const cleanCode = inviteCode.replace(/\s+/g, '').trim();
+    const cleanCode = inviteCode.replace(/[^0-9]/g, '').trim();
 
-    if (!cleanCode || cleanCode.length < 4) {
-      alert('올바른 6자리 학급 코드를 입력해 주세요.');
+    if (!cleanCode || cleanCode.length !== 6) {
+      alert('올바른 6자리 숫자 학급 코드를 입력해 주세요.');
       return;
     }
 
@@ -1371,7 +1388,7 @@
     ensureFirebaseAuth();
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v33') {
+      if (e.key === 'gugudan_adventure_data_v34') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1479,7 +1496,25 @@
       showView('lobbyView');
     });
 
-    // 6-Digit Class Code Teacher Access Submit Handler (100% Bulletproof Access)
+    // Dynamic Input Listener for Teacher Code Input: Numeric Only & Red Warning check
+    const teacherCodeInput = document.getElementById('teacherCodeInput');
+    const teacherCodeWarning = document.getElementById('teacherCodeWarning');
+
+    if (teacherCodeInput) {
+      teacherCodeInput.addEventListener('input', (e) => {
+        // Enforce digits only (replace any Korean or letters)
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+
+        const val = e.target.value.trim();
+        if (val.length === 6 && registeredClasses[val]) {
+          teacherCodeWarning.classList.remove('hidden');
+        } else {
+          teacherCodeWarning.classList.add('hidden');
+        }
+      });
+    }
+
+    // 6-Digit Class Code Teacher Access Submit Handler
     const teacherLoginForm = document.getElementById('teacherLoginForm');
     if (teacherLoginForm) {
       teacherLoginForm.addEventListener('submit', async (e) => {
@@ -1487,8 +1522,8 @@
         const code = document.getElementById('teacherCodeInput').value.trim();
         const tName = document.getElementById('teacherNameInput').value.trim();
 
-        if (!code) {
-          alert('6자리 학급 코드를 입력해 주세요.');
+        if (!code || code.length !== 6) {
+          alert('6자리 숫자 학급 코드를 입력해 주세요.');
           return;
         }
 
@@ -1496,12 +1531,13 @@
       });
     }
 
-    // Teacher Class Name Config Edit Modal Handlers
+    // Teacher Class Settings Modal Edit Handlers
     const editClassBtn = document.getElementById('editClassSettingsBtn');
     if (editClassBtn) {
       editClassBtn.addEventListener('click', () => {
         if (!currentUser) return;
         document.getElementById('editClassNameInput').value = currentUser.className || '';
+        document.getElementById('editTeacherNameInput').value = currentUser.name || '';
         openModal('classConfigModal');
       });
     }
@@ -1510,26 +1546,33 @@
       closeModal('classConfigModal');
     });
 
-    // Submit Teacher Class Name Configuration (e.g. '3-6')
+    // Submit Teacher Class Name Configuration (e.g. '3-6') & Teacher Nickname
     document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
 
-      const customName = document.getElementById('editClassNameInput').value.trim();
+      const customClassName = document.getElementById('editClassNameInput').value.trim();
+      const customTeacherName = document.getElementById('editTeacherNameInput').value.trim();
 
-      if (!customName) {
+      if (!customClassName) {
         alert('클래스 이름을 입력해 주세요.');
+        return;
+      }
+
+      if (!customTeacherName) {
+        alert('선생님 닉네임을 입력해 주세요.');
         return;
       }
 
       await ensureFirebaseAuth();
 
-      currentUser.className = customName;
+      currentUser.className = customClassName;
+      currentUser.name = customTeacherName;
 
       const code = currentUser.inviteCode;
       const classRecord = {
-        className: customName,
-        teacherName: currentUser.name,
+        className: customClassName,
+        teacherName: customTeacherName,
         inviteCode: code,
         updatedAt: Date.now()
       };
@@ -1540,14 +1583,14 @@
 
       sampleClassStudents.forEach(async (s) => {
         if (s.inviteCode === code) {
-          s.className = customName;
+          s.className = customClassName;
           await syncToFirestore('students', s.id, s);
         }
       });
 
       Object.values(allPlayersMap).forEach(async (p) => {
         if (p.inviteCode === code) {
-          p.className = customName;
+          p.className = customClassName;
           await syncToFirestore('students', p.id, p);
         }
       });
@@ -1559,7 +1602,7 @@
       renderTeacherAdminPage();
       updateHeaderUI();
 
-      alert(`✅ 클래스 이름이 [${customName}]로 저장되었습니다!\n모든 등록 학생들의 클래스 이름이 즉시 변경되었습니다.`);
+      alert(`✅ 학반 정보가 [${customClassName}], 선생님 닉네임이 [${customTeacherName}]로 저장되었습니다!`);
     });
 
     // Anon Login Click
