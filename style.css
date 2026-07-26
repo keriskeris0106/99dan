@@ -485,18 +485,22 @@ body.theme-ivory {
   justify-content: center;
   gap: 20px;
   margin-top: 20px;
-  flex-wrap: wrap;
+  width: 100%;
 }
 
-/* Hall of Heroes Extra Large Button */
+/* Hall of Heroes Extra Large Button - 100% Width matching Boss Banner */
 .btn-hall-lg {
   background: linear-gradient(135deg, #F59E0B, #B45309);
   color: #FFF;
-  padding: 18px 36px;
-  font-size: 1.3rem;
+  padding: 20px 24px;
+  font-size: 1.35rem;
   font-weight: 900;
   border-radius: var(--radius-lg);
   box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+  display: block;
 }
 
 .btn-hall-lg:hover {
@@ -509,6 +513,19 @@ body.theme-ivory {
   color: #FFF;
   padding: 16px 28px;
   font-size: 1.1rem;
+}
+
+/* ==========================================================================
+   2. Game Play View & Mechanics
+   ========================================================================== */
+
+.rank-table td:first-child, .mini-rank-table td:first-child {
+  white-space: nowrap !important;
+}
+
+.rank-table td strong, .mini-rank-table td strong {
+  white-space: nowrap !important;
+  display: inline-block;
 }
 
 /* ==========================================================================

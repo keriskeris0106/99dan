@@ -772,7 +772,7 @@
 
       actions.innerHTML = `
         <button type="button" class="btn btn-outline" id="bossCancelBtn">취소</button>
-        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn">🔥 네, 던전에 입장합니다</button>
+        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn" style="line-height: 1.35;">🔥 네, 던전에<br>입장합니다</button>
       `;
       openModal('bossConfirmModal');
 
