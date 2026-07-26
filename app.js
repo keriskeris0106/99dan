@@ -1,9 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v18
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v19
    Fixes & Updates:
-   1. Fixed invite code lookup bug: Student automatically gets assigned to the Teacher's exact Grade & Class
-   2. Guaranteed 100% student display on Teacher's Admin Dashboard (matching by invite code & class)
-   3. Removed all hardcoded 3-2 default presets from HTML/JS
+   1. Simplified Student Login UX: Name + Invite Code ONLY (No grade/class dropdowns required!)
+   2. Master Invite Code Validation: Automatically links student to Teacher's exact Class & Dashboard
+   3. Unregistered Code Alert: "⛔ 존재하지 않거나 생성되지 않은 초대코드입니다. 선생님께 안내받은 6자리 초대코드를 다시 확인해주세요."
    ========================================================================== */
 
 (function () {
@@ -167,14 +167,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v18', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v19', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v18');
+      localStorage.removeItem('gugudan_logged_user_v19');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v18');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v19');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -186,7 +186,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v18');
+    const saved = localStorage.getItem('gugudan_adventure_data_v19');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -213,7 +213,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v18', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v19', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
@@ -1039,8 +1039,7 @@
     let matchingStudents = sampleClassStudents;
     if (currentUser.role === 'teacher') {
       matchingStudents = sampleClassStudents.filter(
-        std => std.inviteCode === currentUser.inviteCode || 
-              (Number(std.grade) === Number(currentUser.grade) && Number(std.classNum) === Number(currentUser.classNum))
+        std => std.inviteCode === currentUser.inviteCode
       );
     }
 
@@ -1186,7 +1185,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v18') {
+      if (e.key === 'gugudan_adventure_data_v19') {
         loadStorageData();
         if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
           renderTeacherAdminPage();
@@ -1232,11 +1231,9 @@
       });
     });
 
-    // Student Login Submit (Master Invite Code Lookup & Teacher Class Alignment)
+    // Ultra-Simple Student Login Submit (Name + Invite Code ONLY!)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const inputGrade = parseInt(document.getElementById('studentGradeSelect').value, 10);
-      const inputClassNum = parseInt(document.getElementById('studentClassSelect').value, 10);
       const name = document.getElementById('studentRealName').value.trim();
       const rawInvite = document.getElementById('studentInviteInput').value.trim();
       const invite = rawInvite.replace(/\s+/g, '');
@@ -1251,11 +1248,10 @@
         return;
       }
 
-      // Master Lookup: Find teacher's registered class by invite code
+      // Master Lookup: Find Teacher's registered class by invite code
       let classInfo = registeredClasses[invite];
 
       if (!classInfo) {
-        // Search across registeredTeachersMap
         const foundTeacher = Object.values(registeredTeachersMap).find(t => t.inviteCode === invite);
         if (foundTeacher) {
           classInfo = foundTeacher;
@@ -1263,25 +1259,18 @@
         }
       }
 
+      // Unregistered Code Check: Display double-check message if code doesn't exist
       if (!classInfo) {
-        alert(`⛔ 입력하신 학년, 반, 또는 초대코드가 일치하지 않습니다. 다시 확인 후 입력해주세요.`);
+        alert(`⛔ 존재하지 않거나 아직 생성되지 않은 초대코드입니다.\n선생님께 안내받은 6자리 초대코드를 다시 확인해 주세요.`);
         return;
       }
 
-      // Master Grade & Class Numbers from Teacher Class Configuration
-      const targetGrade = Number(classInfo.grade);
-      const targetClassNum = Number(classInfo.classNum);
-
-      // Validate student selection against teacher's registered class
-      if (inputGrade !== targetGrade || inputClassNum !== targetClassNum) {
-        alert(`⛔ 입력하신 학년, 반, 또는 초대코드가 일치하지 않습니다. 다시 확인 후 입력해주세요.`);
-        return;
-      }
-
+      const targetGrade = Number(classInfo.grade || 1);
+      const targetClassNum = Number(classInfo.classNum || 1);
       const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
 
       let studentUser = sampleClassStudents.find(
-        s => s.name === name && Number(s.grade) === targetGrade && Number(s.classNum) === targetClassNum && s.inviteCode === invite
+        s => s.name === name && s.inviteCode === invite
       );
 
       if (!studentUser) {
