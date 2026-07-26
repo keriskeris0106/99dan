@@ -1,10 +1,11 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v23
-   Firebase Firestore Realtime Cloud Database Integration
-   Fixes & Updates:
-   1. Cloud Realtime Sync: Firebase Firestore onSnapshot listeners for 100% cross-device live sync
-   2. Teacher Class Name Preservation: Guarantees student displays Teacher's exact configured Class Name (e.g. 홍길동 (꿈나무 3학년 1반))
-   3. Real-Time Teacher Dashboard & Hall of Heroes Sync across ALL devices in real time
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v24
+   Redesigned Architecture:
+   1. Class Name Config: Teacher inputs ONLY Class Name (e.g., '3-6'), Grade/Class dropdowns completely removed.
+   2. Student Display Name: Appends Teacher's exact Class Name in parentheses (e.g. 홍길동 (3-6)).
+   3. Hall of Heroes: Ranks ONLY Students and Anon players (Teacher accounts 100% excluded).
+   4. Persistent Device Auto-Login: Sessions automatically persist across page refreshes and browser restarts.
+   5. Account Resume: Same Name + Invite Code resumes previous learning history.
    ========================================================================== */
 
 (function () {
@@ -35,7 +36,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine] Connected successfully!");
+      console.log("🔥 [Firestore Engine v24] Connected successfully!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -168,7 +169,7 @@
       return `${user.name}`;
     }
     if (user.role === 'student') {
-      const classNameStr = user.className || `${user.grade || 1}학년 ${user.classNum || 1}반`;
+      const classNameStr = user.className || '미설정';
       return `${user.name} (${classNameStr})`;
     }
     return user.name;
@@ -182,14 +183,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v23', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v24', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v23');
+      localStorage.removeItem('gugudan_logged_user_v24');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v23');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v24');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -201,7 +202,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v23');
+    const saved = localStorage.getItem('gugudan_adventure_data_v24');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -228,7 +229,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v23', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v24', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
@@ -895,7 +896,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes)
+  // 8. 영웅의 전당 (Hall of Heroes - Teachers Excluded 100%)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -916,8 +917,9 @@
     }
   }
 
+  // Strictly filter OUT all teacher and superadmin accounts from Hall of Heroes!
   function getCombinedUserList() {
-    let list = Object.values(allPlayersMap).filter(u => u.role !== 'teacher' && u.role !== 'superadmin');
+    let list = Object.values(allPlayersMap).filter(u => u && u.role !== 'teacher' && u.role !== 'superadmin');
     
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
       if (!list.some(u => u.id === currentUser.id)) {
@@ -1060,9 +1062,7 @@
       teacherRecord = {
         email: userEmail,
         name: userName,
-        grade: 1,
-        classNum: 1,
-        className: '1학년 1반',
+        className: '', // Initially empty until teacher sets class name in Class Management!
         inviteCode: deterministicCode
       };
       registeredTeachersMap[userEmail] = teacherRecord;
@@ -1081,9 +1081,7 @@
       name: teacherRecord.name,
       role: isSuper ? 'superadmin' : 'teacher',
       email: userEmail,
-      grade: teacherRecord.grade,
-      classNum: teacherRecord.classNum,
-      className: teacherRecord.className,
+      className: teacherRecord.className || '',
       inviteCode: teacherRecord.inviteCode,
       titleIndex: 5,
       totalGold: 999,
@@ -1103,7 +1101,7 @@
 
     document.getElementById('teacherAccountName').textContent = currentUser.name;
 
-    const displayClassStr = currentUser.className || `${currentUser.grade}학년 ${currentUser.classNum}반`;
+    const displayClassStr = currentUser.className ? currentUser.className : '학반 정보 미설정 (학반 정보 변경을 클릭하세요)';
     document.getElementById('teacherClassName').textContent = displayClassStr;
     document.getElementById('teacherInviteCode').textContent = currentUser.inviteCode;
   }
@@ -1138,10 +1136,11 @@
     tbody.innerHTML = '';
 
     if (sortedStudents.length === 0) {
+      const currentClassNameDisplay = currentUser.className || '미설정';
       tbody.innerHTML = `
         <tr>
           <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
-            아직 내 학반(${currentUser.className || currentUser.grade + '학년 ' + currentUser.classNum + '반'}, 초대코드: ${currentUser.inviteCode})에 등록된 학생이 없습니다.
+            아직 내 학반(${currentClassNameDisplay}, 초대코드: ${currentUser.inviteCode})에 등록된 학생이 없습니다.
           </td>
         </tr>
       `;
@@ -1187,9 +1186,9 @@
     `;
 
     document.getElementById('classTagsList').innerHTML = `
-      <span class="req-item">🏫 3학년 2반</span>
+      <span class="req-item">🏫 3-6</span>
       <span class="req-item">🏫 4학년 1반</span>
-      <span class="req-item">🏫 5학년 3반</span>
+      <span class="req-item">🏫 꿈나무 5-3</span>
     `;
   }
 
@@ -1248,7 +1247,8 @@
 
     TITLES.forEach(t => {
       const isUnlocked = t.level <= currentLevel;
-      const card = document.className = `title-item-card ${isUnlocked ? 'unlocked' : ''}`;
+      const card = document.createElement('div');
+      card.className = `title-item-card ${isUnlocked ? 'unlocked' : ''}`;
       card.innerHTML = `
         <div class="title-item-left">
           <span>${t.emoji}</span>
@@ -1274,7 +1274,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v23') {
+      if (e.key === 'gugudan_adventure_data_v24') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1291,7 +1291,7 @@
       });
     }
 
-    // Check Persistent Session User
+    // Check Persistent Session User for Auto-Login on Device
     const activeSession = loadSessionUser();
     if (activeSession) {
       currentUser = activeSession;
@@ -1318,7 +1318,7 @@
       });
     });
 
-    // Student Login Submit (Exact Teacher Class Name Lookup & Real-Time Sync)
+    // Student Login Submit (Uses Teacher's Custom Class Name & Account Resume)
     document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1365,9 +1365,7 @@
       // Global Fallback for 6-digit code
       if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
         classInfo = {
-          grade: 1,
-          classNum: 1,
-          className: '1학년 1반',
+          className: '미설정',
           teacherName: '선생님',
           inviteCode: invite
         };
@@ -1379,13 +1377,9 @@
         return;
       }
 
-      const targetGrade = Number(classInfo.grade || 1);
-      const targetClassNum = Number(classInfo.classNum || 1);
+      const displayClassName = classInfo.className || '미설정';
 
-      // CRITICAL FIX: Always use teacher's configured className if set (e.g. '꿈나무 3학년 1반'), else `${targetGrade}학년 ${targetClassNum}반`
-      const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
-
-      // Account Resume Matching
+      // Account Resume Matching by Name + Invite Code!
       let studentUser = sampleClassStudents.find(
         s => s.name === name && s.inviteCode === invite
       );
@@ -1395,8 +1389,6 @@
           id: `std_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
           name: name,
           role: 'student',
-          grade: targetGrade,
-          classNum: targetClassNum,
           className: displayClassName,
           inviteCode: invite,
           titleIndex: 0,
@@ -1410,8 +1402,6 @@
           weakTableErrors: {}
         };
       } else {
-        studentUser.grade = targetGrade;
-        studentUser.classNum = targetClassNum;
         studentUser.className = displayClassName;
       }
 
@@ -1444,13 +1434,11 @@
       });
     }
 
-    // Teacher Class Config Edit Modal Handlers
+    // Teacher Class Name Config Edit Modal Handlers (ONLY Class Name Input!)
     const editClassBtn = document.getElementById('editClassSettingsBtn');
     if (editClassBtn) {
       editClassBtn.addEventListener('click', () => {
         if (!currentUser) return;
-        document.getElementById('editGradeSelect').value = currentUser.grade || 1;
-        document.getElementById('editClassSelect').value = currentUser.classNum || 1;
         document.getElementById('editClassNameInput').value = currentUser.className || '';
         openModal('classConfigModal');
       });
@@ -1460,36 +1448,33 @@
       closeModal('classConfigModal');
     });
 
+    // Submit Teacher Class Name Configuration (e.g. '3-6')
     document.getElementById('classConfigForm').addEventListener('submit', (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
 
-      const newGrade = parseInt(document.getElementById('editGradeSelect').value, 10);
-      const newClassNum = parseInt(document.getElementById('editClassSelect').value, 10);
       const customName = document.getElementById('editClassNameInput').value.trim();
 
-      const displayClass = customName || `${newGrade}학년 ${newClassNum}반`;
+      if (!customName) {
+        alert('클래스 이름을 입력해 주세요.');
+        return;
+      }
 
-      currentUser.grade = newGrade;
-      currentUser.classNum = newClassNum;
-      currentUser.className = displayClass;
+      currentUser.className = customName;
 
       const code = currentUser.inviteCode;
       const classRecord = {
-        grade: newGrade,
-        classNum: newClassNum,
-        className: displayClass,
+        className: customName,
         teacherName: currentUser.name,
         teacherEmail: currentUser.email,
-        inviteCode: code
+        inviteCode: code,
+        updatedAt: Date.now()
       };
 
       registeredClasses[code] = classRecord;
 
       if (registeredTeachersMap[currentUser.email]) {
-        registeredTeachersMap[currentUser.email].grade = newGrade;
-        registeredTeachersMap[currentUser.email].classNum = newClassNum;
-        registeredTeachersMap[currentUser.email].className = displayClass;
+        registeredTeachersMap[currentUser.email].className = customName;
       }
 
       // Sync updated teacher class to Firestore
@@ -1498,9 +1483,7 @@
       // Update all existing students under this teacher class
       sampleClassStudents.forEach(s => {
         if (s.inviteCode === code) {
-          s.grade = newGrade;
-          s.classNum = newClassNum;
-          s.className = displayClass;
+          s.className = customName;
           syncToFirestore('students', s.id, s);
         }
       });
@@ -1512,7 +1495,7 @@
       renderTeacherAdminPage();
       updateHeaderUI();
 
-      alert(`✅ 학반 정보가 [${displayClass}]로 변경되었습니다!`);
+      alert(`✅ 클래스 이름이 [${customName}]로 저장되었습니다!`);
     });
 
     // Anon Login Click
