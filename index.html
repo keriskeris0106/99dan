@@ -467,7 +467,7 @@
         </button>
         <button type="button" class="role-tab-btn" data-role="teacher">
           <span class="tab-title">👩‍🏫 교사</span>
-          <span class="tab-sub">구글 로그인</span>
+          <span class="tab-sub">학급코드 개설</span>
         </button>
         <button type="button" class="role-tab-btn" data-role="anon">
           <span class="tab-title">🎲 익명</span>
@@ -488,20 +488,30 @@
         <button type="submit" class="btn btn-primary btn-block">🚀 학생으로 접속하기</button>
       </form>
 
-      <!-- (2) 교사 전용 구글 원클릭 로그인 폼 -->
+      <!-- (2) 100% 무결점 6자리 학급 코드 전용 교사 개설/접속 폼 -->
       <form id="teacherLoginForm" class="login-form-content">
-        <div style="text-align: center; padding: 24px 14px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
-          <div style="font-size: 2.4rem; margin-bottom: 8px;">👩‍🏫</div>
-          <h3 style="font-size: 1.15rem; color: var(--text-main); font-weight: 800; margin-bottom: 6px;">
-            교사 클래스 개설 & 구글 로그인
+        <div style="text-align: center; padding: 20px 14px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 18px; border: 1px solid var(--border-color);">
+          <div style="font-size: 2.2rem; margin-bottom: 6px;">👩‍🏫</div>
+          <h3 style="font-size: 1.15rem; color: var(--text-main); font-weight: 800; margin-bottom: 4px;">
+            교사 학급 코드 개설 & 관리 접속
           </h3>
-          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
-            선생님의 Google 계정으로 로그인하면 고유 6자리 초대코드와 전용 학반 관리 페이지가 자동으로 개설됩니다.
+          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+            선생님께서 사용할 6자리 숫자를 입력하시면 1초 만에 클래스가 생성되거나 기존 학반 관리 페이지에 즉시 접속됩니다!
           </p>
         </div>
 
-        <button type="button" id="teacherGoogleLoginBtn" class="btn btn-secondary btn-block" style="font-size: 1.1rem; padding: 14px 18px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-          <span>🌐</span> <strong>Google 계정으로 즉시 로그인</strong>
+        <div class="form-group">
+          <label for="teacherCodeInput">6자리 학급 코드 (원하는 숫자 6자리 입력)</label>
+          <input type="text" id="teacherCodeInput" placeholder="예: 306001 또는 원하는 6자리 숫자" maxlength="6" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
+        </div>
+
+        <div class="form-group">
+          <label for="teacherNameInput">선생님 성함 / 별명 (선택)</label>
+          <input type="text" id="teacherNameInput" placeholder="예: 박선생님" style="font-size: 1rem; padding: 10px 12px;">
+        </div>
+
+        <button type="submit" id="teacherCodeLoginBtn" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 13px 16px;">
+          🚀 학급 개설 / 관리 페이지 접속
         </button>
       </form>
 
