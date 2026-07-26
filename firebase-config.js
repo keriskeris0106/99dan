@@ -1,15 +1,15 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v7
+   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v9
    Firebase Auth (Google OAuth & Anonymous Login) & Auto Initialization
    ========================================================================== */
 
 const firebaseConfig = {
-  apiKey: window.ENV?.FIREBASE_API_KEY || "AIzaSyBAAl1iHevPGrXx9D-9wt39HSh3cmgnips",
-  authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || "dan-d1b45.firebaseapp.com",
-  projectId: window.ENV?.FIREBASE_PROJECT_ID || "dan-d1b45",
-  storageBucket: window.ENV?.FIREBASE_STORAGE_BUCKET || "dan-d1b45.firebasestorage.app",
-  messagingSenderId: window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "18091041366",
-  appId: window.ENV?.FIREBASE_APP_ID || "1:18091041366:web:1862d5eb5d528e9a10d1f7"
+  apiKey: "AIzaSyBAAl1iHevPGrXx9D-9wt39HSh3cmgnips",
+  authDomain: "dan-d1b45.firebaseapp.com",
+  projectId: "dan-d1b45",
+  storageBucket: "dan-d1b45.firebasestorage.app",
+  messagingSenderId: "18091041366",
+  appId: "1:18091041366:web:1862d5eb5d528e9a10d1f7"
 };
 
 let isFirebaseInitialized = false;
@@ -20,7 +20,7 @@ if (typeof firebase !== 'undefined' && firebase.initializeApp) {
       firebase.initializeApp(firebaseConfig);
     }
     isFirebaseInitialized = true;
-    console.log("✅ [Firebase] Firebase App initialized successfully for project: dan-d1b45");
+    console.log("✅ [Firebase] Firebase App initialized for project: dan-d1b45");
   } catch (err) {
     console.warn("⚠️ [Firebase] Init warning:", err);
   }
@@ -30,16 +30,15 @@ window.GugudanFirebase = {
   isConfigured: isFirebaseInitialized,
   config: firebaseConfig,
 
-  // Direct Google OAuth Popup
+  // Direct Google OAuth Popup with account selection prompt
   async signInWithGoogle() {
-    if (!typeof firebase === 'undefined' || !firebase.auth) {
+    if (typeof firebase === 'undefined' || !firebase.auth) {
       console.warn("Firebase Auth SDK not loaded");
       return null;
     }
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
+      provider.setCustomParameters({ prompt: 'select_account' });
       const result = await firebase.auth().signInWithPopup(provider);
       return result.user;
     } catch (err) {
@@ -50,7 +49,7 @@ window.GugudanFirebase = {
 
   // Anonymous Auth Login
   async signInAnonymously() {
-    if (!typeof firebase === 'undefined' || !firebase.auth) {
+    if (typeof firebase === 'undefined' || !firebase.auth) {
       return null;
     }
     try {
