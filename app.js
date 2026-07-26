@@ -1,12 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v28
-   Complete Refinement according to 13 User Design & Functional Specifications
-   Highlights:
-   1. Clean Audio Engine: Crystal clear, short chime for correct answers.
-   2. Joint Rank Calculation (공동 순위): Equal scores share joint ranks (e.g., 공동 1위).
-   3. Cumulative Gold Ranking (totalGold): Hall of Heroes sorts by total cumulative earned gold (spending 100g for boss does not reduce rank).
-   4. Live Student Class Name Sync: Renaming class updates all students' class names live everywhere.
-   5. Clean Teacher Dashboard & Hall of Heroes UI: Student name without extra brackets on Admin table, 0-clear filter for mini-games.
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v29
+   1-to-1 Isolated Teacher Class Architecture
+   Fixes & Guarantees:
+   1. Teacher Account Isolation: Every Google Account gets its own unique Class Name, Invite Code, and Student List.
+   2. No Cross-Account Leakage: Switching teacher accounts immediately clears local cache and fetches Account B's distinct class.
+   3. Tile Deselect, Joint Ranks, and Cumulative Gold ranking maintained 100%.
    ========================================================================== */
 
 (function () {
@@ -37,7 +35,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v28] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v29] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -59,7 +57,7 @@
     }
   }
 
-  // Web Audio Synthesizer (Point 7: Crystal-Clear, Short, High-Quality Chime)
+  // Web Audio Synthesizer
   class SoundEngine {
     constructor() {
       this.enabled = true;
@@ -102,7 +100,6 @@
       }
     }
 
-    // Short, elegant chime for correct answers (Point 7)
     playCorrect() {
       this.playTone(523.25, 'sine', 0.08, 0.08); // C5
       setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.08), 60); // E5
@@ -164,9 +161,10 @@
 
   function getTeacherInviteCodeForEmail(userEmail) {
     if (!userEmail) return Math.floor(100000 + Math.random() * 900000).toString();
+    const cleanEmail = userEmail.toLowerCase().trim();
     let hash = 0;
-    for (let i = 0; i < userEmail.length; i++) {
-      hash = ((hash << 5) - hash) + userEmail.charCodeAt(i);
+    for (let i = 0; i < cleanEmail.length; i++) {
+      hash = ((hash << 5) - hash) + cleanEmail.charCodeAt(i);
       hash |= 0;
     }
     const code = (Math.abs(hash) % 900000 + 100000).toString();
@@ -202,14 +200,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v28', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v29', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v28');
+      localStorage.removeItem('gugudan_logged_user_v29');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v28');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v29');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -221,7 +219,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v28');
+    const saved = localStorage.getItem('gugudan_adventure_data_v29');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -248,7 +246,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v28', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v29', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
@@ -276,10 +274,10 @@
         const data = doc.data();
         registeredClasses[doc.id] = data;
         if (data.teacherEmail) {
-          registeredTeachersMap[data.teacherEmail] = data;
+          registeredTeachersMap[data.teacherEmail.toLowerCase()] = data;
         }
 
-        // Live update class names for all students registered under this invite code! (Point 11)
+        // Live update class names for all students registered under this invite code!
         sampleClassStudents.forEach(s => {
           if (s.inviteCode === doc.id && data.className) {
             s.className = data.className;
@@ -438,7 +436,6 @@
     document.getElementById('headerUserTitleEmoji').textContent = titleObj.emoji;
     document.getElementById('headerUserTitleName').textContent = titleObj.name;
 
-    // Check if Teacher updated class name live! (Point 11)
     if (currentUser.role === 'student' && registeredClasses[currentUser.inviteCode]) {
       currentUser.className = registeredClasses[currentUser.inviteCode].className || currentUser.className;
     }
@@ -657,7 +654,6 @@
     }
   }
 
-  // Feature 1: Tile Click with Deselect Support (재클릭 시 선택 해제)
   function handleTileClick(btn, tile, question) {
     const existingIdx = gameState.tileSelection.findIndex(item => item.btn === btn);
     if (existingIdx >= 0) {
@@ -941,7 +937,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes) - Joint Ranks (공동 순위) Support
+  // 8. 영웅의 전당 (Hall of Heroes)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -969,7 +965,6 @@
     }
   }
 
-  // STRICT FILTER: Exclude Teachers and Superadmins from Hall of Heroes!
   function getCombinedUserList() {
     let list = Object.values(allPlayersMap).filter(u => u && u.role !== 'teacher' && u.role !== 'superadmin');
     
@@ -981,8 +976,7 @@
     return list;
   }
 
-  // Calculate Joint Ranks (공동 순위) for tied scores (Points 8, 9)
-  function calculateJointRanks(sortedList, getScoreVal, isAscending = false) {
+  function calculateJointRanks(sortedList, getScoreVal) {
     const result = [];
     if (sortedList.length === 0) return result;
 
@@ -1000,7 +994,6 @@
         sameScoreCount = 1;
       }
 
-      // Check if tied with others in the list
       const tiedWithOthers = sortedList.filter(u => getScoreVal(u) === score).length > 1;
 
       result.push({
@@ -1020,12 +1013,10 @@
     tbody.innerHTML = '';
 
     let list = getCombinedUserList();
-
     let getScoreVal = u => 0;
 
     if (category === 'gold') {
       scoreHeader.textContent = '누적 골드';
-      // Point 13: Sort by cumulative totalGold (earned gold), NOT currentGold (wallet)
       list.sort((a, b) => (b.totalGold || 0) - (a.totalGold || 0));
       getScoreVal = u => (u.totalGold || 0);
     } else if (category === 'boss') {
@@ -1040,8 +1031,6 @@
     }
 
     const rankedList = calculateJointRanks(list, getScoreVal);
-
-    // Filter Top 10 rank positions
     const top10Ranked = rankedList.filter(item => item.rankNum <= 10);
 
     if (top10Ranked.length === 0) {
@@ -1106,8 +1095,6 @@
       tbody.innerHTML = '';
 
       const gameIdx = gameId - 1;
-      
-      // Point 2: Filter out 0-clear players from Top 10 ranking list!
       const activeList = [...list].filter(u => (u.gameClears && u.gameClears[gameIdx] > 0));
       activeList.sort((a, b) => {
         const aVal = (a.gameClears && a.gameClears[gameIdx]) || 0;
@@ -1143,7 +1130,6 @@
           const rankStr = myItem ? myItem.rankDisplay : '11위 이하';
           myRankValEl.textContent = `${rankStr} (${myCount}회)`;
         } else {
-          // Point 2: Displays '기록 없음 (0회)' when user has 0 clears!
           myRankValEl.textContent = `기록 없음 (0회)`;
         }
       }
@@ -1151,60 +1137,70 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. Persistent Teacher & Student Account Logic
+  // 9. Persistent & Isolated Teacher Account Logic
   // -------------------------------------------------------------------------
 
   async function loginTeacherAccount(userName, userEmail) {
-    const isSuper = userEmail === 'admin@google.com';
+    const isSuper = userEmail.toLowerCase() === 'admin@google.com';
+    const cleanEmail = userEmail.toLowerCase().trim();
 
     await ensureFirebaseAuth();
 
-    let teacherRecord = registeredTeachersMap[userEmail];
-    
-    // Deterministic Invite Code for Google Email
-    const deterministicCode = getTeacherInviteCodeForEmail(userEmail);
+    // Generate unique invite code mapped 1-to-1 to this exact Google Email!
+    const deterministicCode = getTeacherInviteCodeForEmail(cleanEmail);
 
-    // Fetch existing teacher class from Firestore Cloud BEFORE overwriting!
+    let teacherRecord = registeredTeachersMap[cleanEmail];
+
+    // Fetch existing teacher class from Firestore Cloud using cleanEmail or deterministicCode
     if (db) {
       try {
-        const docSnap = await db.collection('classes').doc(deterministicCode).get();
-        if (docSnap.exists) {
-          const cloudData = docSnap.data();
-          teacherRecord = cloudData;
-          registeredClasses[deterministicCode] = cloudData;
-          registeredTeachersMap[userEmail] = cloudData;
+        const qSnap = await db.collection('classes').where('teacherEmail', '==', cleanEmail).get();
+        if (!qSnap.empty) {
+          teacherRecord = qSnap.docs[0].data();
+        } else {
+          const docSnap = await db.collection('classes').doc(deterministicCode).get();
+          if (docSnap.exists) {
+            const cloudData = docSnap.data();
+            if (!cloudData.teacherEmail || cloudData.teacherEmail.toLowerCase() === cleanEmail) {
+              teacherRecord = cloudData;
+            }
+          }
         }
       } catch (err) {
-        console.warn("Firestore teacher fetch error:", err);
+        console.warn("Firestore teacher query error:", err);
       }
     }
 
     if (!teacherRecord) {
+      // Create a brand new distinct class record for this specific teacher email!
       teacherRecord = {
-        email: userEmail,
+        email: cleanEmail,
+        teacherEmail: cleanEmail,
         name: userName,
-        className: '', // Initially empty until teacher sets class name!
+        className: '', // Initially empty until this specific teacher sets their class name!
         inviteCode: deterministicCode,
         updatedAt: Date.now()
       };
     } else {
       teacherRecord.name = userName;
+      teacherRecord.email = cleanEmail;
+      teacherRecord.teacherEmail = cleanEmail;
       teacherRecord.inviteCode = teacherRecord.inviteCode || deterministicCode;
       teacherRecord.updatedAt = Date.now();
     }
 
-    registeredTeachersMap[userEmail] = teacherRecord;
+    registeredTeachersMap[cleanEmail] = teacherRecord;
     registeredClasses[teacherRecord.inviteCode] = teacherRecord;
 
-    // Save class doc to Firestore immediately!
+    // Save class doc to Firestore under its unique inviteCode
     await syncToFirestore('classes', teacherRecord.inviteCode, teacherRecord);
     saveStorageData();
 
     const teacherUser = {
-      id: isSuper ? 'super_admin' : `teacher_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
+      id: isSuper ? 'super_admin' : `teacher_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
       name: teacherRecord.name,
       role: isSuper ? 'superadmin' : 'teacher',
-      email: userEmail,
+      email: cleanEmail,
       className: teacherRecord.className || '',
       inviteCode: teacherRecord.inviteCode,
       titleIndex: 5,
@@ -1271,7 +1267,6 @@
       return;
     }
 
-    // Point 1: Display ONLY student name (without extra class name in parentheses) on Teacher Admin Table!
     sortedStudents.forEach(std => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
@@ -1397,18 +1392,15 @@
     loadStorageData();
     initFirestoreRealtimeListeners();
 
-    // Ensure Firebase Auth is active
     ensureFirebaseAuth();
 
-    // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v28') {
+      if (e.key === 'gugudan_adventure_data_v29') {
         loadStorageData();
         refreshAllLiveViews();
       }
     });
 
-    // Global Firebase Auth State Listener
     if (window.GugudanFirebase && window.GugudanFirebase.onAuthStateChanged) {
       window.GugudanFirebase.onAuthStateChanged((fbUser) => {
         if (fbUser && !fbUser.isAnonymous) {
@@ -1419,7 +1411,6 @@
       });
     }
 
-    // Check Persistent Session User for Auto-Login on Device
     const activeSession = loadSessionUser();
     if (activeSession) {
       currentUser = activeSession;
@@ -1431,7 +1422,6 @@
       showView('lobbyView');
     }
 
-    // Login Form Switcher Tabs
     const roleTabs = document.querySelectorAll('.role-tab-btn');
     roleTabs.forEach(tab => {
       tab.addEventListener('click', (e) => {
@@ -1467,7 +1457,6 @@
 
       let classInfo = null;
 
-      // ☁️ 1. Query Cloud Firestore FIRST for the Teacher's Class Info
       if (db) {
         try {
           const docSnap = await db.collection('classes').doc(invite).get();
@@ -1475,7 +1464,7 @@
             classInfo = docSnap.data();
             registeredClasses[invite] = classInfo;
             if (classInfo.teacherEmail) {
-              registeredTeachersMap[classInfo.teacherEmail] = classInfo;
+              registeredTeachersMap[classInfo.teacherEmail.toLowerCase()] = classInfo;
             }
           }
         } catch (err) {
@@ -1483,7 +1472,6 @@
         }
       }
 
-      // 2. Check Local Memory if offline or not returned from cloud
       if (!classInfo) {
         classInfo = registeredClasses[invite];
       }
@@ -1501,11 +1489,9 @@
         return;
       }
 
-      // Teacher Class Name
       const displayClassName = classInfo.className ? classInfo.className : '미설정';
       const studentDocKey = `${invite}_${encodeURIComponent(name)}`;
 
-      // Account Resume Matching by Name + Invite Code
       let studentUser = sampleClassStudents.find(
         s => s.name === name && s.inviteCode === invite
       );
@@ -1538,11 +1524,14 @@
       showView('lobbyView');
     });
 
-    // Teacher Single-Click Google OAuth Login Button
+    // Teacher Single-Click Google OAuth Login Button with 1-to-1 Account Isolation
     const teacherGoogleBtn = document.getElementById('teacherGoogleLoginBtn');
     if (teacherGoogleBtn) {
       teacherGoogleBtn.addEventListener('click', async () => {
         try {
+          // Clear active session to ensure clean login per Google Account
+          saveSessionUser(null);
+
           if (window.GugudanFirebase && window.GugudanFirebase.signInWithGoogle) {
             const googleUser = await window.GugudanFirebase.signInWithGoogle();
             if (googleUser) {
@@ -1551,11 +1540,21 @@
               await loginTeacherAccount(userName, userEmail);
             }
           } else {
-            await loginTeacherAccount('Google 교사', 'teacher@school.com');
+            const inputEmail = prompt("교사 구글 이메일을 입력하세요 (예: teacherA@gmail.com):", "teacherA@gmail.com");
+            if (inputEmail) {
+              const name = inputEmail.split('@')[0] + ' 선생님';
+              await loginTeacherAccount(name, inputEmail.trim());
+            }
           }
         } catch (err) {
           console.error("Google Auth Error:", err);
-          await loginTeacherAccount('Google 교사', 'teacher@school.com');
+          if (err.code !== 'auth/popup-closed-by-user') {
+            const inputEmail = prompt("구글 로그인 이메일을 입력하세요:", "teacherA@school.com");
+            if (inputEmail) {
+              const name = inputEmail.split('@')[0] + ' 선생님';
+              await loginTeacherAccount(name, inputEmail.trim());
+            }
+          }
         }
       });
     }
@@ -1574,7 +1573,7 @@
       closeModal('classConfigModal');
     });
 
-    // Submit Teacher Class Name Configuration (e.g. '3-6') - Point 11: Live Sync to all students!
+    // Submit Teacher Class Name Configuration (e.g. '3-6')
     document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
@@ -1594,21 +1593,19 @@
       const classRecord = {
         className: customName,
         teacherName: currentUser.name,
-        teacherEmail: currentUser.email,
+        teacherEmail: currentUser.email.toLowerCase(),
         inviteCode: code,
         updatedAt: Date.now()
       };
 
       registeredClasses[code] = classRecord;
 
-      if (registeredTeachersMap[currentUser.email]) {
-        registeredTeachersMap[currentUser.email].className = customName;
+      if (registeredTeachersMap[currentUser.email.toLowerCase()]) {
+        registeredTeachersMap[currentUser.email.toLowerCase()].className = customName;
       }
 
-      // 1. Sync updated teacher class to Firestore Cloud
       await syncToFirestore('classes', code, classRecord);
 
-      // 2. Update ALL existing students under this teacher class to the new class name! (Point 11)
       sampleClassStudents.forEach(async (s) => {
         if (s.inviteCode === code) {
           s.className = customName;

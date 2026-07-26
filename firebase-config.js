@@ -1,5 +1,5 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v10
+   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v11
    Firebase Auth (Google OAuth & Anonymous Login) with AuthState Listener
    ========================================================================== */
 
@@ -20,7 +20,7 @@ if (typeof firebase !== 'undefined' && firebase.initializeApp) {
       firebase.initializeApp(firebaseConfig);
     }
     isFirebaseInitialized = true;
-    console.log("✅ [Firebase Engine v10] Initialized successfully for dan-d1b45");
+    console.log("✅ [Firebase Engine v11] Initialized successfully for dan-d1b45");
   } catch (err) {
     console.warn("⚠️ [Firebase] Init warning:", err);
   }
@@ -30,12 +30,18 @@ window.GugudanFirebase = {
   isConfigured: isFirebaseInitialized,
   config: firebaseConfig,
 
-  // Direct Google Auth Popup & Redirect Support
+  // Direct Google Auth Popup with Forced Account Selection
   async signInWithGoogle() {
     if (typeof firebase === 'undefined' || !firebase.auth) {
       console.warn("Firebase Auth SDK not loaded");
       return null;
     }
+
+    // Force sign out previous session before Google Auth popup so account selector always appears!
+    try {
+      await firebase.auth().signOut();
+    } catch (e) {}
+
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');
     provider.addScope('profile');
@@ -45,8 +51,8 @@ window.GugudanFirebase = {
       const result = await firebase.auth().signInWithPopup(provider);
       return result.user;
     } catch (err) {
-      if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
-        console.warn("Popup blocked or closed, trying redirect mode...", err);
+      if (err.code === 'auth/popup-blocked') {
+        console.warn("Popup blocked, trying redirect mode...", err);
         return await firebase.auth().signInWithRedirect(provider);
       }
       throw err;
