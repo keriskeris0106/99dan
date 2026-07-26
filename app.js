@@ -1,9 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v14
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v15
    Fixes & Updates:
-   1. Smart Invite Code Validation & Automatic Class Link Protection
-   2. Prevents student login failures even across different devices/browsers
-   3. Normalizes whitespace and auto-initializes valid 6-digit codes
+   1. Strict 3-Way Student Login Check (Grade + ClassNum + Invite Code MUST match)
+   2. Displays Teacher's Custom Class Name next to Student Nickname
+   3. Removed default hardcoded '3학년 2반' initial preset
+   4. Real-time Student-to-Teacher Admin Data Synchronization (via storage event)
    ========================================================================== */
 
 (function () {
@@ -25,10 +26,7 @@
   const BOSS_ENTRY_GOLD = 100;
   const REWARD_GOLD_PER_PROBLEM = 1;
 
-  let registeredClasses = {
-    '639218': { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반', inviteCode: '639218' }
-  };
-
+  let registeredClasses = {};
   let registeredTeachersMap = {};
   let allPlayersMap = {};
 
@@ -155,9 +153,9 @@
     if (user.role === 'anon') {
       return `${user.name}`;
     }
-    if (user.grade && user.classNum) {
-      const alias = user.className || `${user.grade}-${user.classNum}`;
-      return `${user.name} (${alias})`;
+    if (user.role === 'student') {
+      const classNameStr = user.className || `${user.grade}학년 ${user.classNum}반`;
+      return `${user.name} (${classNameStr})`;
     }
     return user.name;
   }
@@ -170,14 +168,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v14', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v15', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v14');
+      localStorage.removeItem('gugudan_logged_user_v15');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v14');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v15');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -189,7 +187,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v14');
+    const saved = localStorage.getItem('gugudan_adventure_data_v15');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -202,11 +200,10 @@
       }
     }
 
-    if (!registeredClasses['639218']) {
-      registeredClasses['639218'] = { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반', inviteCode: '639218' };
-    }
     if (!sampleClassStudents) sampleClassStudents = [];
     if (!allPlayersMap) allPlayersMap = {};
+    if (!registeredClasses) registeredClasses = {};
+    if (!registeredTeachersMap) registeredTeachersMap = {};
   }
 
   function saveStorageData() {
@@ -217,7 +214,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v14', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v15', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
@@ -816,7 +813,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes - Real Player Rankings Only)
+  // 8. 영웅의 전당 (Hall of Heroes)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -966,7 +963,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. Dynamic Teacher Login & Real Google Name/ID Integration
+  // 9. Dynamic Teacher Login & Class Management
   // -------------------------------------------------------------------------
 
   function loginTeacherAccount(userName, userEmail) {
@@ -978,9 +975,9 @@
       teacherRecord = {
         email: userEmail,
         name: userName,
-        grade: 3,
-        classNum: 2,
-        className: '3학년 2반',
+        grade: 1,
+        classNum: 1,
+        className: '1학년 1반',
         inviteCode: code
       };
       registeredTeachersMap[userEmail] = teacherRecord;
@@ -1187,6 +1184,16 @@
   function initApp() {
     loadStorageData();
 
+    // Listen for Real-Time Multi-Window/Tab Storage Sync
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'gugudan_adventure_data_v15') {
+        loadStorageData();
+        if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
+          renderTeacherAdminPage();
+        }
+      }
+    });
+
     // Global Firebase Auth State Listener
     if (window.GugudanFirebase && window.GugudanFirebase.onAuthStateChanged) {
       window.GugudanFirebase.onAuthStateChanged((fbUser) => {
@@ -1225,7 +1232,7 @@
       });
     });
 
-    // Student Login Submit (With Smart Invite Code Auto-Link & Normalization)
+    // Student Login Submit (Strict 3-Way Check: Grade + ClassNum + InviteCode)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const grade = parseInt(document.getElementById('studentGradeSelect').value);
@@ -1246,24 +1253,19 @@
 
       let classInfo = registeredClasses[invite];
 
-      // Smart Invite Code Auto-Link Protection:
-      // If code format is valid (e.g. 6-digit number or any valid string), auto-register/link class!
-      if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
-        classInfo = {
-          grade: grade,
-          classNum: classNum,
-          className: `${grade}학년 ${classNum}반`,
-          teacherName: '선생님',
-          inviteCode: invite
-        };
-        registeredClasses[invite] = classInfo;
-        saveStorageData();
-      }
-
       if (!classInfo) {
-        alert('잘못된 초대코드 형태입니다. 올바른 6자리 초대코드를 입력해주세요.');
+        alert(`⛔ 존재하지 않는 초대코드입니다.\n선생님께 안내받은 정확한 6자리 초대코드를 입력해주세요.`);
         return;
       }
+
+      // Strict 3-Way Check: Grade + ClassNum + InviteCode MUST match Teacher Settings!
+      if (classInfo.grade !== grade || classInfo.classNum !== classNum) {
+        const teacherClassStr = classInfo.className || `${classInfo.grade}학년 ${classInfo.classNum}반`;
+        alert(`⛔ 학년/반 불일치!\n해당 초대코드(${invite})는 [${teacherClassStr}] 전용 코드입니다.\n입력하신 학년/반(${grade}학년 ${classNum}반)을 선생님의 학반 정보와 정확히 동일하게 선택해주세요.`);
+        return;
+      }
+
+      const displayClassName = classInfo.className || `${grade}학년 ${classNum}반`;
 
       let studentUser = sampleClassStudents.find(
         s => s.name === name && s.grade === grade && s.classNum === classNum && s.inviteCode === invite
@@ -1271,12 +1273,12 @@
 
       if (!studentUser) {
         studentUser = {
-          id: `std_${Date.now()}`,
+          id: `std_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
           name: name,
           role: 'student',
           grade: grade,
           classNum: classNum,
-          className: classInfo.className || `${grade}-${classNum}`,
+          className: displayClassName,
           inviteCode: invite,
           titleIndex: 0,
           totalGold: 0,
@@ -1288,6 +1290,8 @@
           gameClears: [0, 0, 0],
           weakTableErrors: {}
         };
+      } else {
+        studentUser.className = displayClassName;
       }
 
       saveUserDataInList(studentUser);
@@ -1324,8 +1328,8 @@
     if (editClassBtn) {
       editClassBtn.addEventListener('click', () => {
         if (!currentUser) return;
-        document.getElementById('editGradeSelect').value = currentUser.grade || 3;
-        document.getElementById('editClassSelect').value = currentUser.classNum || 2;
+        document.getElementById('editGradeSelect').value = currentUser.grade || 1;
+        document.getElementById('editClassSelect').value = currentUser.classNum || 1;
         document.getElementById('editClassNameInput').value = currentUser.className || '';
         openModal('classConfigModal');
       });
@@ -1355,7 +1359,8 @@
         classNum: newClassNum,
         className: displayClass,
         teacherName: currentUser.name,
-        teacherEmail: currentUser.email
+        teacherEmail: currentUser.email,
+        inviteCode: code
       };
 
       if (registeredTeachersMap[currentUser.email]) {
@@ -1363,6 +1368,15 @@
         registeredTeachersMap[currentUser.email].classNum = newClassNum;
         registeredTeachersMap[currentUser.email].className = displayClass;
       }
+
+      // Also update all existing students in this class with the new class alias!
+      sampleClassStudents.forEach(s => {
+        if (s.inviteCode === code) {
+          s.grade = newGrade;
+          s.classNum = newClassNum;
+          s.className = displayClass;
+        }
+      });
 
       saveStorageData();
       saveSessionUser(currentUser);
