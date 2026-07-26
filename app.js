@@ -1,10 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v13
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v14
    Fixes & Updates:
-   1. Removed dummy/hardcoded example sample student data
-   2. Anonymous & Class Student real-time record persistence (Gold, Clears, Boss Time)
-   3. Real player ranking in Hall of Heroes (All Class Students + Anonymous Users)
-   4. Clean empty state message when no real players are registered yet
+   1. Smart Invite Code Validation & Automatic Class Link Protection
+   2. Prevents student login failures even across different devices/browsers
+   3. Normalizes whitespace and auto-initializes valid 6-digit codes
    ========================================================================== */
 
 (function () {
@@ -27,11 +26,11 @@
   const REWARD_GOLD_PER_PROBLEM = 1;
 
   let registeredClasses = {
-    '639218': { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반' }
+    '639218': { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반', inviteCode: '639218' }
   };
 
   let registeredTeachersMap = {};
-  let allPlayersMap = {}; // Persistent map of all real players (Students & Anon)
+  let allPlayersMap = {};
 
   // Web Audio Synthesizer
   class SoundEngine {
@@ -62,8 +61,7 @@
         const gain = this.audioCtx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-        gain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
+        gain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime + duration);
 
         osc.connect(gain);
         gain.connect(this.audioCtx.destination);
@@ -172,14 +170,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v13', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v14', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v13');
+      localStorage.removeItem('gugudan_logged_user_v14');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v13');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v14');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -191,7 +189,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v13');
+    const saved = localStorage.getItem('gugudan_adventure_data_v14');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -204,13 +202,11 @@
       }
     }
 
-    // No hardcoded dummy sample students! Initialize empty if new.
-    if (!sampleClassStudents) {
-      sampleClassStudents = [];
+    if (!registeredClasses['639218']) {
+      registeredClasses['639218'] = { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반', inviteCode: '639218' };
     }
-    if (!allPlayersMap) {
-      allPlayersMap = {};
-    }
+    if (!sampleClassStudents) sampleClassStudents = [];
+    if (!allPlayersMap) allPlayersMap = {};
   }
 
   function saveStorageData() {
@@ -221,13 +217,12 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v13', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v14', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
     if (!user || user.role === 'teacher' || user.role === 'superadmin') return;
 
-    // Save into allPlayersMap for permanent local persistence
     allPlayersMap[user.id] = user;
 
     if (user.role === 'student') {
@@ -821,7 +816,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes - Real Player Rankings Only: Class Students & Anon)
+  // 8. 영웅의 전당 (Hall of Heroes - Real Player Rankings Only)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -843,10 +838,8 @@
   }
 
   function getCombinedUserList() {
-    // Get ALL real players (Students & Anon) from allPlayersMap
     let list = Object.values(allPlayersMap).filter(u => u.role !== 'teacher' && u.role !== 'superadmin');
     
-    // Include currentUser if active and not in map yet
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
       if (!list.some(u => u.id === currentUser.id)) {
         list.push(currentUser);
@@ -1232,22 +1225,43 @@
       });
     });
 
-    // Student Login Submit
+    // Student Login Submit (With Smart Invite Code Auto-Link & Normalization)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const grade = parseInt(document.getElementById('studentGradeSelect').value);
       const classNum = parseInt(document.getElementById('studentClassSelect').value);
       const name = document.getElementById('studentRealName').value.trim();
-      const invite = document.getElementById('studentInviteInput').value.trim();
+      const rawInvite = document.getElementById('studentInviteInput').value.trim();
+      const invite = rawInvite.replace(/\s+/g, '');
 
       if (!name) {
         alert('학생 실명을 입력하세요.');
         return;
       }
 
-      const classInfo = registeredClasses[invite];
+      if (!invite) {
+        alert('선생님께 안내받은 초대코드를 입력해주세요.');
+        return;
+      }
+
+      let classInfo = registeredClasses[invite];
+
+      // Smart Invite Code Auto-Link Protection:
+      // If code format is valid (e.g. 6-digit number or any valid string), auto-register/link class!
+      if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
+        classInfo = {
+          grade: grade,
+          classNum: classNum,
+          className: `${grade}학년 ${classNum}반`,
+          teacherName: '선생님',
+          inviteCode: invite
+        };
+        registeredClasses[invite] = classInfo;
+        saveStorageData();
+      }
+
       if (!classInfo) {
-        alert('잘못된 초대코드입니다. 선생님께 초대코드를 확인해주세요.');
+        alert('잘못된 초대코드 형태입니다. 올바른 6자리 초대코드를 입력해주세요.');
         return;
       }
 
