@@ -1,6 +1,6 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v12
-   Firebase Auth Engine with Clean Non-blocking Google OAuth & Popup Support
+   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v13
+   Seamless Fallback Google OAuth Engine (Popup -> Redirect Mode)
    ========================================================================== */
 
 const firebaseConfig = {
@@ -20,7 +20,7 @@ if (typeof firebase !== 'undefined' && firebase.initializeApp) {
       firebase.initializeApp(firebaseConfig);
     }
     isFirebaseInitialized = true;
-    console.log("✅ [Firebase Engine v12] Initialized successfully for dan-d1b45");
+    console.log("✅ [Firebase Engine v13] Initialized successfully for dan-d1b45");
   } catch (err) {
     console.warn("⚠️ [Firebase] Init warning:", err);
   }
@@ -30,7 +30,7 @@ window.GugudanFirebase = {
   isConfigured: isFirebaseInitialized,
   config: firebaseConfig,
 
-  // Direct Google Auth Popup Support
+  // Seamless Google Auth Popup & Redirect Fallback Support
   async signInWithGoogle() {
     if (typeof firebase === 'undefined' || !firebase.auth) {
       console.warn("Firebase Auth SDK not loaded");
@@ -46,11 +46,15 @@ window.GugudanFirebase = {
       const result = await firebase.auth().signInWithPopup(provider);
       return result.user;
     } catch (err) {
-      if (err.code === 'auth/popup-blocked') {
-        console.warn("Popup blocked, trying redirect mode...", err);
-        return await firebase.auth().signInWithRedirect(provider);
+      console.warn("Popup sign in failed, redirecting seamlessly...", err);
+      // Fallback seamlessly to redirect mode if popup is blocked or closed
+      try {
+        await firebase.auth().signInWithRedirect(provider);
+        return null;
+      } catch (redirectErr) {
+        console.error("Google Auth Redirect Error:", redirectErr);
+        throw redirectErr;
       }
-      throw err;
     }
   },
 

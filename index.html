@@ -467,7 +467,7 @@
         </button>
         <button type="button" class="role-tab-btn" data-role="teacher">
           <span class="tab-title">👩‍🏫 교사</span>
-          <span class="tab-sub">구글/이메일</span>
+          <span class="tab-sub">구글 로그인</span>
         </button>
         <button type="button" class="role-tab-btn" data-role="anon">
           <span class="tab-title">🎲 익명</span>
@@ -488,32 +488,20 @@
         <button type="submit" class="btn btn-primary btn-block">🚀 학생으로 접속하기</button>
       </form>
 
-      <!-- (2) 교사 전용 로그인 폼 (구글 원클릭 + 이메일 100% 보장 폼) -->
+      <!-- (2) 교사 전용 구글 원클릭 로그인 폼 -->
       <form id="teacherLoginForm" class="login-form-content">
-        <div style="text-align: center; padding: 16px 10px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 16px; border: 1px solid var(--border-color);">
-          <div style="font-size: 2rem; margin-bottom: 6px;">👩‍🏫</div>
-          <h3 style="font-size: 1.1rem; color: var(--text-main); font-weight: 800; margin-bottom: 4px;">
-            교사 클래스 개설 & 로그인
+        <div style="text-align: center; padding: 24px 14px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
+          <div style="font-size: 2.4rem; margin-bottom: 8px;">👩‍🏫</div>
+          <h3 style="font-size: 1.15rem; color: var(--text-main); font-weight: 800; margin-bottom: 6px;">
+            교사 클래스 개설 & 구글 로그인
           </h3>
-          <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
-            교사가 구글 로그인을 하면 클래스를 개설하여 코드로 학생들을 초대할 수 있습니다.
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+            선생님의 Google 계정으로 로그인하면 고유 6자리 초대코드와 전용 학반 관리 페이지가 자동으로 개설됩니다.
           </p>
         </div>
 
-        <button type="button" id="teacherGoogleLoginBtn" class="btn btn-secondary btn-block" style="font-size: 1.05rem; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px;">
+        <button type="button" id="teacherGoogleLoginBtn" class="btn btn-secondary btn-block" style="font-size: 1.1rem; padding: 14px 18px; display: flex; align-items: center; justify-content: center; gap: 10px;">
           <span>🌐</span> <strong>Google 계정으로 즉시 로그인</strong>
-        </button>
-
-        <div style="text-align: center; font-size: 0.82rem; color: var(--text-muted); margin: 12px 0;">
-          ───── 또는 교사 이메일 직접 입력 ─────
-        </div>
-
-        <div class="form-group">
-          <label for="teacherEmailDirectInput">교사 이메일 주소</label>
-          <input type="email" id="teacherEmailDirectInput" placeholder="예: teacher36@gmail.com" style="font-size: 1rem; padding: 10px 12px;">
-        </div>
-        <button type="submit" id="teacherDirectLoginSubmitBtn" class="btn btn-primary btn-block">
-          🚀 교사 클래스 생성 / 접속하기
         </button>
       </form>
 
