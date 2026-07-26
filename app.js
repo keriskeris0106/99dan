@@ -1,8 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v6
-   Updates:
-   1. Correct answer reward changed from 5 Gold to 1 Gold per problem (+1 Gold)
-   2. Strict Teacher Admin Page Student Filtering (Displays ONLY students matching Teacher's Grade, ClassNum, and Invite Code)
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v7
+   Fixes & Updates:
+   1. Initial Login Modal on 1st visit & Persistent Session Auto-Login on return visits
+   2. Single-click Google Popup OAuth for Teachers (no manual email typing needed)
+   3. Firebase Auth Popup integration & LocalStorage Session Persistence
    ========================================================================== */
 
 (function () {
@@ -21,8 +22,8 @@
     { level: 5, emoji: '👑', name: '구구단 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
   ];
 
-  const BOSS_ENTRY_GOLD = 100; // 100 Gold entry requirement
-  const REWARD_GOLD_PER_PROBLEM = 1; // 1 Gold per correct problem
+  const BOSS_ENTRY_GOLD = 100;
+  const REWARD_GOLD_PER_PROBLEM = 1;
 
   let registeredClasses = {
     '639218': { grade: 3, classNum: 2, teacherName: '김선생' }
@@ -127,7 +128,7 @@
   };
 
   // -------------------------------------------------------------------------
-  // 3. Helper Utilities & LocalStorage
+  // 3. Helper Utilities & Session Persistence
   // -------------------------------------------------------------------------
 
   function generate6DigitCode() {
@@ -144,6 +145,7 @@
   }
 
   function getStudentDisplayName(user) {
+    if (!user) return '익명';
     if (user.role === 'anon') {
       return `${user.name}`;
     }
@@ -158,8 +160,29 @@
     return `${titleObj.emoji} ${getStudentDisplayName(user)}`;
   }
 
+  function saveSessionUser(user) {
+    currentUser = user;
+    if (user) {
+      localStorage.setItem('gugudan_logged_user_v7', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('gugudan_logged_user_v7');
+    }
+  }
+
+  function loadSessionUser() {
+    const savedUser = localStorage.getItem('gugudan_logged_user_v7');
+    if (savedUser) {
+      try {
+        return JSON.parse(savedUser);
+      } catch (e) {
+        console.error('Session user parse error:', e);
+      }
+    }
+    return null;
+  }
+
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v6');
+    const saved = localStorage.getItem('gugudan_adventure_data_v7');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -268,10 +291,11 @@
       classes: registeredClasses,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v6', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v7', JSON.stringify(payload));
   }
 
   function updateUserTitleIndex(user) {
+    if (!user) return;
     let newIndex = 0;
     const bCount = user.bossCount || 0;
     for (let i = TITLES.length - 1; i >= 0; i--) {
@@ -343,7 +367,7 @@
       clearInterval(gameState.timerId);
       gameState.timerId = null;
     }
-    currentUser = null;
+    saveSessionUser(null);
     openModal('loginModal');
     showView('lobbyView', false);
   }
@@ -437,7 +461,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 6. Mini-Games Engine (1 Gold Reward per Problem)
+  // 6. Mini-Games Engine
   // -------------------------------------------------------------------------
 
   function startMiniGame(gameType) {
@@ -542,7 +566,7 @@
     if (selectedVal === correctVal) {
       sound.playCorrect();
       gameState.solvedCount++;
-      gameState.earnedGold += REWARD_GOLD_PER_PROBLEM; // +1 Gold
+      gameState.earnedGold += REWARD_GOLD_PER_PROBLEM;
       gameState.currentCombo++;
       sound.playCombo(gameState.currentCombo);
       if (gameState.currentCombo > gameState.maxCombo) {
@@ -583,7 +607,7 @@
       if (val1 * val2 === question.product) {
         sound.playCorrect();
         gameState.solvedCount++;
-        gameState.earnedGold += REWARD_GOLD_PER_PROBLEM; // +1 Gold
+        gameState.earnedGold += REWARD_GOLD_PER_PROBLEM;
         gameState.currentCombo++;
         sound.playCombo(gameState.currentCombo);
         if (gameState.currentCombo > gameState.maxCombo) {
@@ -626,6 +650,7 @@
       currentUser.gameClears[gameIdx] = (currentUser.gameClears[gameIdx] || 0) + 1;
 
       saveUserDataInList(currentUser);
+      saveSessionUser(currentUser);
     }
 
     updateHeaderUI();
@@ -705,6 +730,7 @@
         currentUser.currentGold -= BOSS_ENTRY_GOLD;
         currentUser.bossCount = (currentUser.bossCount || 0) + 1;
         saveUserDataInList(currentUser);
+        saveSessionUser(currentUser);
         updateHeaderUI();
 
         startBossBattle();
@@ -835,6 +861,7 @@
       }
       updateUserTitleIndex(currentUser);
       saveUserDataInList(currentUser);
+      saveSessionUser(currentUser);
     }
 
     updateHeaderUI();
@@ -976,7 +1003,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. Teacher Admin Dashboard (Strict Student Filtering by Class & Invite Code)
+  // 9. Teacher Admin Dashboard
   // -------------------------------------------------------------------------
 
   function renderTeacherAdminPage() {
@@ -994,7 +1021,6 @@
       superPanel.classList.add('hidden');
     }
 
-    // Filter students STRICTLY by Teacher's Grade, ClassNum, AND Invite Code!
     let matchingStudents = sampleClassStudents;
     if (currentUser.role === 'teacher') {
       matchingStudents = sampleClassStudents.filter(
@@ -1004,7 +1030,6 @@
       );
     }
 
-    // Sort matching students in Korean Alphabetical Order (ㄱ-ㄴ-ㄷ 순)
     const sortedStudents = [...matchingStudents].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
 
     const tbody = document.getElementById('studentLogsTableBody');
@@ -1151,11 +1176,23 @@
   }
 
   // -------------------------------------------------------------------------
-  // 11. Initializations & Event Listeners
+  // 11. Initializations & Persistent Session Startup
   // -------------------------------------------------------------------------
 
   function initApp() {
     loadStorageData();
+
+    // Check Persistent Session User
+    const activeSession = loadSessionUser();
+    if (activeSession) {
+      currentUser = activeSession;
+      closeModal('loginModal');
+      updateHeaderUI();
+      showView('lobbyView');
+    } else {
+      openModal('loginModal');
+      showView('lobbyView');
+    }
 
     // Login Form Switcher Tabs
     const roleTabs = document.querySelectorAll('.role-tab-btn');
@@ -1218,49 +1255,60 @@
         saveStorageData();
       }
 
+      saveSessionUser(currentUser);
       closeModal('loginModal');
       updateHeaderUI();
       showView('lobbyView');
     });
 
-    // Teacher Login Submit
-    document.getElementById('teacherLoginForm').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const email = document.getElementById('teacherEmail').value.trim();
-      const name = document.getElementById('teacherRealName').value.trim();
-      const grade = parseInt(document.getElementById('teacherGradeSelect').value);
-      const classNum = parseInt(document.getElementById('teacherClassSelect').value);
+    // Teacher Single-Click Google OAuth Login Button
+    const teacherGoogleBtn = document.getElementById('teacherGoogleLoginBtn');
+    if (teacherGoogleBtn) {
+      teacherGoogleBtn.addEventListener('click', async () => {
+        try {
+          let googleUser = null;
+          if (window.GugudanFirebase && window.GugudanFirebase.signInWithGoogle) {
+            googleUser = await window.GugudanFirebase.signInWithGoogle();
+          }
 
-      const isSuper = email === 'admin@google.com';
-      const generatedCode = '639218'; // Use standardized 6-digit code for 3-2
+          const userEmail = googleUser ? googleUser.email : 'teacher@school.com';
+          const userName = googleUser ? (googleUser.displayName || '김선생') : '김선생';
+          const isSuper = userEmail === 'admin@google.com';
+          const generatedCode = '639218';
 
-      registeredClasses[generatedCode] = { grade, classNum, teacherName: name };
-      saveStorageData();
+          registeredClasses[generatedCode] = { grade: 3, classNum: 2, teacherName: userName };
+          saveStorageData();
 
-      currentUser = {
-        id: isSuper ? 'super_admin' : `teacher_${Date.now()}`,
-        name: name,
-        role: isSuper ? 'superadmin' : 'teacher',
-        email: email,
-        grade, classNum,
-        inviteCode: generatedCode,
-        titleIndex: 5,
-        totalGold: 999,
-        currentGold: 999
-      };
+          const teacherUser = {
+            id: isSuper ? 'super_admin' : `teacher_${googleUser ? googleUser.uid : Date.now()}`,
+            name: userName,
+            role: isSuper ? 'superadmin' : 'teacher',
+            email: userEmail,
+            grade: 3,
+            classNum: 2,
+            inviteCode: generatedCode,
+            titleIndex: 5,
+            totalGold: 999,
+            currentGold: 999
+          };
 
-      document.getElementById('teacherClassName').textContent = `${grade}학년 ${classNum}반`;
-      document.getElementById('teacherInviteCode').textContent = generatedCode;
+          saveSessionUser(teacherUser);
+          document.getElementById('teacherClassName').textContent = `3학년 2반`;
+          document.getElementById('teacherInviteCode').textContent = generatedCode;
 
-      closeModal('loginModal');
-      updateHeaderUI();
-      showView(isSuper ? 'adminView' : 'lobbyView');
-    });
+          closeModal('loginModal');
+          updateHeaderUI();
+          showView(isSuper ? 'adminView' : 'lobbyView');
+        } catch (err) {
+          alert(`구글 로그인 시도 중 오류가 발생했습니다: ${err.message || err}`);
+        }
+      });
+    }
 
     // Anon Login Click
     document.getElementById('anonLoginStartBtn').addEventListener('click', () => {
       const randomCode = generateRandomAnonCode();
-      currentUser = {
+      const anonUser = {
         id: `anon_${randomCode}`,
         name: `익명${randomCode}`,
         role: 'anon',
@@ -1275,6 +1323,7 @@
         weakTableErrors: {}
       };
 
+      saveSessionUser(anonUser);
       closeModal('loginModal');
       updateHeaderUI();
       showView('lobbyView');

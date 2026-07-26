@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800;900&family=Outfit:wght@600;800;900&display=swap" rel="stylesheet">
   
-  <!-- Firebase SDKs (Auth & Firestore) -->
+  <!-- Firebase SDKs (Auth & Firestore Compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -504,43 +504,20 @@
         <button type="submit" class="btn btn-primary btn-block">🚀 학생으로 접속하기</button>
       </form>
 
-      <!-- (2) 교사 로그인 폼 -->
+      <!-- (2) 교사 전용 구글 원클릭 로그인 폼 -->
       <form id="teacherLoginForm" class="login-form-content">
-        <div class="form-group">
-          <label for="teacherEmail">구글 계정 ID (이메일)</label>
-          <input type="email" id="teacherEmail" placeholder="admin@google.com 또는 teacher@school.com" value="teacher@school.com" required>
-          <small>💡 Firebase 구글 로그인 연동 준비 완료. 'admin@google.com' 입력 시 **최종 관리자** 권한 접속.</small>
+        <div style="text-align: center; padding: 20px 10px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 20px; border: 1px solid var(--border-color);">
+          <div style="font-size: 2.2rem; margin-bottom: 8px;">🌐</div>
+          <h3 style="font-size: 1.15rem; color: var(--text-main); font-weight: 800; margin-bottom: 6px;">
+            교사 구글 계정 간편 로그인
+          </h3>
+          <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+            별도의 아이디 입력 없이 <strong>구글 계정 인증</strong>만으로<br>담당 학반 관리 페이지에 접속하실 수 있습니다.
+          </p>
         </div>
-        <div class="form-group">
-          <label for="teacherRealName">교사 실명</label>
-          <input type="text" id="teacherRealName" placeholder="예: 김선생" value="김선생" required>
-        </div>
-        <div class="form-group">
-          <label>담당 학교 및 학반 입력</label>
-          <div class="select-inline-group">
-            <select id="teacherGradeSelect" required>
-              <option value="1">1학년</option>
-              <option value="2">2학년</option>
-              <option value="3" selected>3학년</option>
-              <option value="4">4학년</option>
-              <option value="5">5학년</option>
-              <option value="6">6학년</option>
-            </select>
-            <select id="teacherClassSelect" required>
-              <option value="1">1반</option>
-              <option value="2" selected>2반</option>
-              <option value="3">3반</option>
-              <option value="4">4반</option>
-              <option value="5">5반</option>
-              <option value="6">6반</option>
-              <option value="7">7반</option>
-              <option value="8">8반</option>
-              <option value="9">9반</option>
-              <option value="10">10반</option>
-            </select>
-          </div>
-        </div>
-        <button type="submit" class="btn btn-secondary btn-block">🌐 교사 구글 로그인 / 가입 신청</button>
+        <button type="button" id="teacherGoogleLoginBtn" class="btn btn-secondary btn-block" style="font-size: 1.1rem; padding: 14px 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+          <span>🌐</span> <strong>Google 계정으로 즉시 로그인</strong>
+        </button>
       </form>
 
       <!-- (3) 익명 도전자 폼 -->

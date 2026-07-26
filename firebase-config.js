@@ -1,54 +1,61 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Safe Firebase Config
-   Environment Variables & Secure Injection
-   Prevents API Keys from being exposed in public GitHub repositories.
+   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v7
+   Firebase Auth (Google OAuth & Anonymous Login) & Auto Initialization
    ========================================================================== */
 
-// Safely read from Environment Variables (Vercel / Local .env)
 const firebaseConfig = {
-  apiKey: (typeof process !== 'undefined' && process.env?.FIREBASE_API_KEY) || window.ENV?.FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
-  authDomain: (typeof process !== 'undefined' && process.env?.FIREBASE_AUTH_DOMAIN) || window.ENV?.FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: (typeof process !== 'undefined' && process.env?.FIREBASE_PROJECT_ID) || window.ENV?.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
-  storageBucket: (typeof process !== 'undefined' && process.env?.FIREBASE_STORAGE_BUCKET) || window.ENV?.FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: (typeof process !== 'undefined' && process.env?.FIREBASE_MESSAGING_SENDER_ID) || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
-  appId: (typeof process !== 'undefined' && process.env?.FIREBASE_APP_ID) || window.ENV?.FIREBASE_APP_ID || "YOUR_APP_ID"
+  apiKey: window.ENV?.FIREBASE_API_KEY || "AIzaSyBAAl1iHevPGrXx9D-9wt39HSh3cmgnips",
+  authDomain: window.ENV?.FIREBASE_AUTH_DOMAIN || "dan-d1b45.firebaseapp.com",
+  projectId: window.ENV?.FIREBASE_PROJECT_ID || "dan-d1b45",
+  storageBucket: window.ENV?.FIREBASE_STORAGE_BUCKET || "dan-d1b45.firebasestorage.app",
+  messagingSenderId: window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "18091041366",
+  appId: window.ENV?.FIREBASE_APP_ID || "1:18091041366:web:1862d5eb5d528e9a10d1f7"
 };
 
-const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
+let isFirebaseInitialized = false;
 
-if (!isFirebaseConfigured) {
-  console.info(
-    "💡 [보안 안내] Firebase API Key가 Vercel 환경변수(Environment Variables)로 안전하게 주입되기 전까지 오프라인 로컬 보안 모드(LocalStorage)로 작동합니다.\n" +
-    "GitHub 공개 저장소에 키가 노출되지 않도록 Vercel 대시보드에서 환경변수를 설정해주세요."
-  );
+if (typeof firebase !== 'undefined' && firebase.initializeApp) {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    isFirebaseInitialized = true;
+    console.log("✅ [Firebase] Firebase App initialized successfully for project: dan-d1b45");
+  } catch (err) {
+    console.warn("⚠️ [Firebase] Init warning:", err);
+  }
 }
 
-// Global Firebase helper object
 window.GugudanFirebase = {
-  isConfigured: isFirebaseConfigured,
+  isConfigured: isFirebaseInitialized,
   config: firebaseConfig,
-  
+
+  // Direct Google OAuth Popup
   async signInWithGoogle() {
-    if (!isFirebaseConfigured || typeof firebase === 'undefined') {
-      console.log("LocalStorage Fallback: Google Login simulated");
+    if (!typeof firebase === 'undefined' || !firebase.auth) {
+      console.warn("Firebase Auth SDK not loaded");
       return null;
     }
     try {
       const provider = new firebase.auth.GoogleAuthProvider();
-      return await firebase.auth().signInWithPopup(provider);
+      provider.addScope('email');
+      provider.addScope('profile');
+      const result = await firebase.auth().signInWithPopup(provider);
+      return result.user;
     } catch (err) {
       console.error("Firebase Google Auth Error:", err);
       throw err;
     }
   },
 
+  // Anonymous Auth Login
   async signInAnonymously() {
-    if (!isFirebaseConfigured || typeof firebase === 'undefined') {
-      console.log("LocalStorage Fallback: Anonymous Login simulated");
+    if (!typeof firebase === 'undefined' || !firebase.auth) {
       return null;
     }
     try {
-      return await firebase.auth().signInAnonymously();
+      const result = await firebase.auth().signInAnonymously();
+      return result.user;
     } catch (err) {
       console.error("Firebase Anon Auth Error:", err);
       throw err;
