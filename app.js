@@ -1,9 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v11
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v12
    Fixes & Updates:
-   1. Dynamic Per-Teacher Accounts & Unique 6-Digit Class Invite Codes
-   2. Teacher Class Customization Modal (Grade, Class, & Class Alias)
-   3. Multi-Tenant Student-to-Teacher Class Isolation
+   1. Google Auth Name/ID Integration (Displays real Google Name/ID instead of '김선생')
+   2. Removed Teacher Email Text display from Teacher Admin Page UI
+   3. '클래스 관리하기' button repositioned to the right of Gold Display in Header
+   4. Hall of Heroes Excludes Teachers (Ranks only Students & Anonymous users)
    ========================================================================== */
 
 (function () {
@@ -26,7 +27,7 @@
   const REWARD_GOLD_PER_PROBLEM = 1;
 
   let registeredClasses = {
-    '639218': { grade: 3, classNum: 2, teacherName: '김선생', teacherEmail: 'teacher@school.com', className: '3학년 2반' }
+    '639218': { grade: 3, classNum: 2, teacherName: '선생님', teacherEmail: 'teacher@school.com', className: '3학년 2반' }
   };
 
   let registeredTeachersMap = {};
@@ -170,14 +171,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v11', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v12', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v11');
+      localStorage.removeItem('gugudan_logged_user_v12');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v11');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v12');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -189,7 +190,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v11');
+    const saved = localStorage.getItem('gugudan_adventure_data_v12');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -300,7 +301,7 @@
       teachers: registeredTeachersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v11', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v12', JSON.stringify(payload));
   }
 
   function updateUserTitleIndex(user) {
@@ -883,7 +884,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes)
+  // 8. 영웅의 전당 (Hall of Heroes - 교사 완전 제외, 오직 학생 & 익명만 목록 표출)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -905,7 +906,8 @@
   }
 
   function getCombinedUserList() {
-    let list = [...sampleClassStudents];
+    // Filter OUT any teachers or superadmins (Only include students & anon)
+    let list = sampleClassStudents.filter(u => u.role !== 'teacher' && u.role !== 'superadmin');
     if (currentUser && currentUser.role === 'anon') {
       list.push(currentUser);
     }
@@ -954,7 +956,7 @@
     });
 
     const myRankBanner = document.getElementById('myRankBanner');
-    if (currentUser) {
+    if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
       const myIndex = list.findIndex(u => u.id === currentUser.id);
       if (myIndex >= 10) {
         document.getElementById('myRankPos').textContent = `${myIndex + 1}위`;
@@ -1001,7 +1003,7 @@
         tbody.appendChild(tr);
       });
 
-      if (currentUser) {
+      if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
         const myIdx = sorted.findIndex(u => u.id === currentUser.id);
         const myCount = (currentUser.gameClears && currentUser.gameClears[gameIdx]) || 0;
         const myRankValEl = document.getElementById(`myMiniRankVal${gameId}`);
@@ -1015,7 +1017,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. Dynamic Per-Teacher Account & Class Settings Engine
+  // 9. Dynamic Teacher Login & Real Google Name/ID Integration
   // -------------------------------------------------------------------------
 
   function loginTeacherAccount(userName, userEmail) {
@@ -1066,7 +1068,6 @@
     if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
 
     document.getElementById('teacherAccountName').textContent = currentUser.name;
-    document.getElementById('teacherAccountEmail').textContent = currentUser.email;
 
     const displayClassStr = currentUser.className || `${currentUser.grade}학년 ${currentUser.classNum}반`;
     document.getElementById('teacherClassName').textContent = displayClassStr;
@@ -1143,7 +1144,6 @@
     tbody.innerHTML = `
       <tr>
         <td>박선생</td>
-        <td>park@school.com</td>
         <td>4학년 1반</td>
         <td>
           <button type="button" class="btn btn-primary btn-sm">승인</button>
@@ -1253,7 +1253,7 @@
     if (window.GugudanFirebase && window.GugudanFirebase.onAuthStateChanged) {
       window.GugudanFirebase.onAuthStateChanged((fbUser) => {
         if (fbUser && !fbUser.isAnonymous) {
-          const userName = fbUser.displayName || '선생님';
+          const userName = fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : '교사');
           const userEmail = fbUser.email || `teacher_${fbUser.uid}@school.com`;
           loginTeacherAccount(userName, userEmail);
         }
@@ -1349,16 +1349,16 @@
           if (window.GugudanFirebase && window.GugudanFirebase.signInWithGoogle) {
             const googleUser = await window.GugudanFirebase.signInWithGoogle();
             if (googleUser) {
-              const userName = googleUser.displayName || '선생님';
+              const userName = googleUser.displayName || (googleUser.email ? googleUser.email.split('@')[0] : '교사');
               const userEmail = googleUser.email || `teacher_${googleUser.uid}@school.com`;
               loginTeacherAccount(userName, userEmail);
             }
           } else {
-            loginTeacherAccount('김선생', 'teacher@school.com');
+            loginTeacherAccount('Google 교사', 'teacher@school.com');
           }
         } catch (err) {
           console.error("Google Auth Error:", err);
-          loginTeacherAccount('김선생 (교사)', 'teacher@school.com');
+          loginTeacherAccount('Google 교사', 'teacher@school.com');
         }
       });
     }

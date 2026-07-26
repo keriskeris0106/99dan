@@ -46,6 +46,11 @@
           <span id="userGoldVal">0</span> Gold
         </div>
 
+        <!-- 교사 전용 '클래스 관리하기' 버튼 (골드 오른쪽에 위치!) -->
+        <button type="button" class="btn btn-admin-link hidden" id="openAdminBtn">
+          🏫 클래스 관리하기
+        </button>
+
         <button type="button" class="icon-btn" id="soundToggleBtn" title="소리 켜기/끄기">
           <span id="soundIcon">🔊</span>
         </button>
@@ -145,13 +150,10 @@
           </div>
         </div>
 
-        <!-- (3) 하단 바로가기 메뉴 (영웅의 전당 대형 버튼 & 교사 전용 버튼) -->
+        <!-- (3) 하단 바로가기 메뉴 (영웅의 전당 대형 버튼) -->
         <div class="lobby-footer-nav">
           <button type="button" class="btn btn-hall btn-hall-lg" id="openHallBtn">
             🏆 영웅의 전당 보러가기
-          </button>
-          <button type="button" class="btn btn-admin-link hidden" id="openAdminBtn">
-            🏫 교사 / 관리자 페이지
           </button>
         </div>
 
@@ -260,12 +262,12 @@
       </section>
 
 
-      <!-- ================= 4. 영웅의 전당 (HALL OF HEROES) ================= -->
+      <!-- ================= 4. 영웅의 전당 (HALL OF HEROES - 교사 제외, 학생 & 익명 전용) ================= -->
       <section id="hallView" class="view-section">
         <div class="hall-container">
           <div class="hall-header">
             <h2>🏆 영웅의 전당</h2>
-            <p>열심히 훈련하고 보스전에 도전한 최고의 탐험가들입니다! (Top 10)</p>
+            <p>열심히 훈련하고 보스전에 도전한 학생 및 익명 탐험가들입니다! (Top 10)</p>
           </div>
 
           <!-- 영웅의 전당 4가지 탭 -->
@@ -366,11 +368,11 @@
       </section>
 
 
-      <!-- ================= 5. 교사 / 관리자 페이지 ================= -->
+      <!-- ================= 5. 교사 클래스 관리 페이지 ================= -->
       <section id="adminView" class="view-section">
         <div class="admin-container">
           <div class="admin-header">
-            <h2>🏫 교사 / 학습 관리자 페이지</h2>
+            <h2>🏫 클래스 관리 페이지</h2>
             <div class="admin-role-indicator">
               현재 권한: <strong id="adminRoleText">교사 (승인됨)</strong>
             </div>
@@ -386,7 +388,6 @@
               <thead>
                 <tr>
                   <th>교사 이름</th>
-                  <th>구글 계정</th>
                   <th>신청 학반</th>
                   <th>승인 관리</th>
                 </tr>
@@ -400,11 +401,11 @@
             <div class="class-tags-list" id="classTagsList"></div>
           </div>
 
-          <!-- 일반 교사 전용 섹션 (계정별 고유 학반/초대코드 커스텀 설정) -->
+          <!-- 일반 교사 전용 섹션 (이메일 표시 제거 & 구글 ID 실명 노출) -->
           <div class="teacher-panel" id="teacherPanel">
             <div class="teacher-class-card">
               <div class="class-info-left">
-                <h3>담당 교사: <span id="teacherAccountName">김선생</span> (<span id="teacherAccountEmail">teacher@school.com</span>)</h3>
+                <h3>담당 교사: <span id="teacherAccountName">교사명</span></h3>
                 <p>담당 학반 설정: <strong id="teacherClassName">3학년 2반</strong> | 고유 초대코드 (6자리): <strong class="invite-code-display" id="teacherInviteCode">639218</strong></p>
               </div>
               <div style="display: flex; gap: 8px;">
