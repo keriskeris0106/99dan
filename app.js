@@ -1068,17 +1068,9 @@
         }
 
         let rankStyle = '';
-        let rankBadgeHtml = '';
-        if (item.rankNum === 1) {
-          rankStyle = 'rank-top1';
-          rankBadgeHtml = '<span class="top-rank-badge top1-badge" title="1위 금빛 전설">🥇✨</span>';
-        } else if (item.rankNum === 2) {
-          rankStyle = 'rank-top2';
-          rankBadgeHtml = '<span class="top-rank-badge top2-badge" title="2위 은빛 영웅">🥈✨</span>';
-        } else if (item.rankNum === 3) {
-          rankStyle = 'rank-top3';
-          rankBadgeHtml = '<span class="top-rank-badge top3-badge" title="3위 동빛 수호자">🥉✨</span>';
-        }
+        if (item.rankNum === 1) rankStyle = 'rank-top1';
+        else if (item.rankNum === 2) rankStyle = 'rank-top2';
+        else if (item.rankNum === 3) rankStyle = 'rank-top3';
 
         let scoreStr = '';
         if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
@@ -1087,7 +1079,7 @@
 
         tr.innerHTML = `
           <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
-          <td>${getFullUserTitleString(u)} ${rankBadgeHtml} ${isMyRow ? '📍 (나)' : ''}</td>
+          <td>${getFullUserTitleString(u)} ${isMyRow ? '📍 (나)' : ''}</td>
           <td>${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
         `;
@@ -1151,14 +1143,9 @@
           const isMyRow = currentUser && (u.id === currentUser.id);
           if (isMyRow) tr.className = 'my-row-highlight';
 
-          let rankBadgeHtml = '';
-          if (item.rankNum === 1) rankBadgeHtml = '<span class="top-rank-badge top1-badge" title="1위 금빛">🥇✨</span>';
-          else if (item.rankNum === 2) rankBadgeHtml = '<span class="top-rank-badge top2-badge" title="2위 은빛">🥈✨</span>';
-          else if (item.rankNum === 3) rankBadgeHtml = '<span class="top-rank-badge top3-badge" title="3위 동빛">🥉✨</span>';
-
           tr.innerHTML = `
             <td><strong>${item.rankDisplay}</strong></td>
-            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${rankBadgeHtml} ${isMyRow ? '📍(나)' : ''}</td>
+            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${isMyRow ? '📍(나)' : ''}</td>
             <td><strong>${count}회</strong></td>
           `;
           tbody.appendChild(tr);

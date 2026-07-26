@@ -255,7 +255,7 @@ body.theme-ivory {
 }
 
 .btn-boss-start {
-  background: linear-gradient(135deg, #DC2626, #7F1D1D);
+  background: linear-gradient(135deg, #DC2626, #991B1B);
   color: #FFF;
   font-size: 1.25rem;
   font-weight: 800;
@@ -263,6 +263,14 @@ body.theme-ivory {
   border-radius: var(--radius-md);
   box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
   animation: pulse-glow 2s infinite alternate;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-boss-start:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 12px 35px rgba(239, 68, 68, 0.8);
+  background: linear-gradient(135deg, #EF4444, #B91C1C);
 }
 
 @keyframes pulse-glow {
@@ -300,6 +308,12 @@ body.theme-ivory {
   margin-top: 16px;
   margin-bottom: 32px;
   overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.boss-banner-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 40px rgba(124, 58, 237, 0.4);
 }
 
 .boss-banner-glow {
