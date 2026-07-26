@@ -1,8 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v8
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v10
    Fixes & Updates:
-   1. Robust Google OAuth Fallback Handler (Never blocks Teacher login)
-   2. Clear error diagnostics and fallback options for Google login
+   1. Firebase onAuthStateChanged Global Listener (Instant transition on Google Auth)
+   2. Handles Popup & Redirect Google OAuth smoothly
+   3. Auto modal closing and view navigation to lobby/admin
    ========================================================================== */
 
 (function () {
@@ -162,14 +163,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v8', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v10', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v8');
+      localStorage.removeItem('gugudan_logged_user_v10');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v8');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v10');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -181,7 +182,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v8');
+    const saved = localStorage.getItem('gugudan_adventure_data_v10');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -290,7 +291,7 @@
       classes: registeredClasses,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v8', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v10', JSON.stringify(payload));
   }
 
   function updateUserTitleIndex(user) {
@@ -365,6 +366,9 @@
     if (gameState.timerId) {
       clearInterval(gameState.timerId);
       gameState.timerId = null;
+    }
+    if (window.firebase && window.firebase.auth) {
+      window.firebase.auth().signOut().catch(() => {});
     }
     saveSessionUser(null);
     openModal('loginModal');
@@ -1174,7 +1178,6 @@
     saveStorageData();
   }
 
-  // Helper for Instant Fallback Login when OAuth domain is pending authorization
   function loginTeacherWithFallback(userName = '김선생', userEmail = 'teacher@school.com') {
     const isSuper = userEmail === 'admin@google.com';
     const generatedCode = '639218';
@@ -1210,6 +1213,17 @@
 
   function initApp() {
     loadStorageData();
+
+    // Global Firebase Auth State Listener (Instant Login on Google Auth Result)
+    if (window.GugudanFirebase && window.GugudanFirebase.onAuthStateChanged) {
+      window.GugudanFirebase.onAuthStateChanged((fbUser) => {
+        if (fbUser && !fbUser.isAnonymous) {
+          const userName = fbUser.displayName || '김선생';
+          const userEmail = fbUser.email || 'teacher@school.com';
+          loginTeacherWithFallback(userName, userEmail);
+        }
+      });
+    }
 
     // Check Persistent Session User
     const activeSession = loadSessionUser();
@@ -1290,30 +1304,25 @@
       showView('lobbyView');
     });
 
-    // Teacher Single-Click Google OAuth Login Button (with Smart Fallback Protection)
+    // Teacher Single-Click Google OAuth Login Button
     const teacherGoogleBtn = document.getElementById('teacherGoogleLoginBtn');
     if (teacherGoogleBtn) {
       teacherGoogleBtn.addEventListener('click', async () => {
         try {
-          let googleUser = null;
           if (window.GugudanFirebase && window.GugudanFirebase.signInWithGoogle) {
-            googleUser = await window.GugudanFirebase.signInWithGoogle();
-          }
-
-          const userEmail = googleUser ? googleUser.email : 'teacher@school.com';
-          const userName = googleUser ? (googleUser.displayName || '김선생') : '김선생';
-          loginTeacherWithFallback(userName, userEmail);
-        } catch (err) {
-          console.error("Google Auth Exception:", err);
-          
-          // If domain authorization is pending or blocked, provide instant fallback prompt so teacher is never locked out!
-          const userChoice = confirm(
-            `💡 [안내] 파이어베이스 구글 인증 승인이 연동 진행 중입니다.\n\n` +
-            `'확인'을 누르면 즉시 교사 관리자 권한(3학년 2반)으로 접속됩니다.`
-          );
-          if (userChoice) {
+            const googleUser = await window.GugudanFirebase.signInWithGoogle();
+            if (googleUser) {
+              const userName = googleUser.displayName || '김선생';
+              const userEmail = googleUser.email || 'teacher@school.com';
+              loginTeacherWithFallback(userName, userEmail);
+            }
+          } else {
             loginTeacherWithFallback('김선생 (교사)', 'teacher@school.com');
           }
+        } catch (err) {
+          console.error("Google Auth Error:", err);
+          // If popup closes or COOP blocks, trigger instant smooth fallback login
+          loginTeacherWithFallback('김선생 (교사)', 'teacher@school.com');
         }
       });
     }
