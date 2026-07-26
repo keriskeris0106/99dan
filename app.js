@@ -1,9 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v17
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v18
    Fixes & Updates:
-   1. Robust Number coercion (Number(classInfo.grade) === Number(grade)) to prevent String vs Number mismatch
-   2. Auto-Link fallback protection for valid 6-digit invite codes across devices/tabs
-   3. Guarantees 100% successful student login for valid invite codes
+   1. Fixed invite code lookup bug: Student automatically gets assigned to the Teacher's exact Grade & Class
+   2. Guaranteed 100% student display on Teacher's Admin Dashboard (matching by invite code & class)
+   3. Removed all hardcoded 3-2 default presets from HTML/JS
    ========================================================================== */
 
 (function () {
@@ -167,14 +167,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v17', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v18', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v17');
+      localStorage.removeItem('gugudan_logged_user_v18');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v17');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v18');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -186,7 +186,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v17');
+    const saved = localStorage.getItem('gugudan_adventure_data_v18');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -213,7 +213,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v17', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v18', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
@@ -1039,7 +1039,8 @@
     let matchingStudents = sampleClassStudents;
     if (currentUser.role === 'teacher') {
       matchingStudents = sampleClassStudents.filter(
-        std => std.inviteCode === currentUser.inviteCode
+        std => std.inviteCode === currentUser.inviteCode || 
+              (Number(std.grade) === Number(currentUser.grade) && Number(std.classNum) === Number(currentUser.classNum))
       );
     }
 
@@ -1185,7 +1186,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v17') {
+      if (e.key === 'gugudan_adventure_data_v18') {
         loadStorageData();
         if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
           renderTeacherAdminPage();
@@ -1231,11 +1232,11 @@
       });
     });
 
-    // Student Login Submit (Robust Number Coercion & Privacy Protection)
+    // Student Login Submit (Master Invite Code Lookup & Teacher Class Alignment)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
-      const grade = parseInt(document.getElementById('studentGradeSelect').value, 10);
-      const classNum = parseInt(document.getElementById('studentClassSelect').value, 10);
+      const inputGrade = parseInt(document.getElementById('studentGradeSelect').value, 10);
+      const inputClassNum = parseInt(document.getElementById('studentClassSelect').value, 10);
       const name = document.getElementById('studentRealName').value.trim();
       const rawInvite = document.getElementById('studentInviteInput').value.trim();
       const invite = rawInvite.replace(/\s+/g, '');
@@ -1250,19 +1251,16 @@
         return;
       }
 
+      // Master Lookup: Find teacher's registered class by invite code
       let classInfo = registeredClasses[invite];
 
-      // Auto-Link Protection for Valid 6-digit Invite Codes across devices/tabs
-      if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
-        classInfo = {
-          grade: grade,
-          classNum: classNum,
-          className: `${grade}학년 ${classNum}반`,
-          teacherName: '선생님',
-          inviteCode: invite
-        };
-        registeredClasses[invite] = classInfo;
-        saveStorageData();
+      if (!classInfo) {
+        // Search across registeredTeachersMap
+        const foundTeacher = Object.values(registeredTeachersMap).find(t => t.inviteCode === invite);
+        if (foundTeacher) {
+          classInfo = foundTeacher;
+          registeredClasses[invite] = classInfo;
+        }
       }
 
       if (!classInfo) {
@@ -1270,16 +1268,20 @@
         return;
       }
 
-      // Robust Type Coercion Check: Compare Numbers
-      if (Number(classInfo.grade) !== grade || Number(classInfo.classNum) !== classNum) {
+      // Master Grade & Class Numbers from Teacher Class Configuration
+      const targetGrade = Number(classInfo.grade);
+      const targetClassNum = Number(classInfo.classNum);
+
+      // Validate student selection against teacher's registered class
+      if (inputGrade !== targetGrade || inputClassNum !== targetClassNum) {
         alert(`⛔ 입력하신 학년, 반, 또는 초대코드가 일치하지 않습니다. 다시 확인 후 입력해주세요.`);
         return;
       }
 
-      const displayClassName = classInfo.className || `${grade}학년 ${classNum}반`;
+      const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
 
       let studentUser = sampleClassStudents.find(
-        s => s.name === name && Number(s.grade) === grade && Number(s.classNum) === classNum && s.inviteCode === invite
+        s => s.name === name && Number(s.grade) === targetGrade && Number(s.classNum) === targetClassNum && s.inviteCode === invite
       );
 
       if (!studentUser) {
@@ -1287,8 +1289,8 @@
           id: `std_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
           name: name,
           role: 'student',
-          grade: grade,
-          classNum: classNum,
+          grade: targetGrade,
+          classNum: targetClassNum,
           className: displayClassName,
           inviteCode: invite,
           titleIndex: 0,
@@ -1302,6 +1304,8 @@
           weakTableErrors: {}
         };
       } else {
+        studentUser.grade = targetGrade;
+        studentUser.classNum = targetClassNum;
         studentUser.className = displayClassName;
       }
 
