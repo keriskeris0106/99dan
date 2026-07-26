@@ -1,9 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v21
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v22
    Fixes & Updates:
-   1. Deterministic Teacher Class & Invite Code: Same Google email ALWAYS connects to the exact same teacher class & invite code across all devices
-   2. Student Account & Progress Resume: Logging in with same Name + Invite Code resumes accumulated Gold, Solved Questions, Boss Records, and Badges
-   3. Persistent Auto-Login: Keeps sessions logged in automatically on page refresh or browser restart
+   1. Student Display Name: Appends Teacher's exact configured Class Name in parentheses (e.g. 홍길동 (꿈나무 3학년 1반))
+   2. Real-Time Live Sync for Teacher Student Management Page: New students & score updates reflect instantly
+   3. Real-Time Live Sync for Hall of Heroes (영웅의 전당): Leaderboard updates live upon score changes
    ========================================================================== */
 
 (function () {
@@ -130,7 +130,6 @@
   // 3. Helper Utilities & Session Persistence
   // -------------------------------------------------------------------------
 
-  // Deterministic 6-digit invite code generator for teacher email
   function getTeacherInviteCodeForEmail(userEmail) {
     if (!userEmail) return Math.floor(100000 + Math.random() * 900000).toString();
     let hash = 0;
@@ -171,14 +170,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v21', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v22', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v21');
+      localStorage.removeItem('gugudan_logged_user_v22');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v21');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v22');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -190,7 +189,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v21');
+    const saved = localStorage.getItem('gugudan_adventure_data_v22');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -217,7 +216,8 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v21', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v22', JSON.stringify(payload));
+    refreshAllLiveViews();
   }
 
   function saveUserDataInList(user) {
@@ -234,6 +234,24 @@
       }
     }
     saveStorageData();
+  }
+
+  function refreshAllLiveViews() {
+    updateHeaderUI();
+
+    // If teacher admin view is currently visible, re-render it instantly
+    const adminView = document.getElementById('adminView');
+    if (adminView && adminView.classList.contains('active')) {
+      renderTeacherAdminPage();
+    }
+
+    // If Hall of Heroes view is currently visible, re-render leaderboard instantly
+    const hallView = document.getElementById('hallView');
+    if (hallView && hallView.classList.contains('active')) {
+      const activeTabEl = document.querySelector('.hall-tab-btn.active');
+      const activeTab = activeTabEl ? activeTabEl.dataset.tab : 'gold';
+      renderHallOfHeroes(activeTab);
+    }
   }
 
   function updateUserTitleIndex(user) {
@@ -288,6 +306,8 @@
     if (pushHistory && navigationHistory[navigationHistory.length - 1] !== viewId) {
       navigationHistory.push(viewId);
     }
+
+    refreshAllLiveViews();
   }
 
   function handleHomeNavigation() {
@@ -974,7 +994,7 @@
 
     let teacherRecord = registeredTeachersMap[userEmail];
     
-    // Deterministic Invite Code for Google Email: ALWAYS same 6-digit code for the same email!
+    // Deterministic Invite Code for Google Email
     const deterministicCode = getTeacherInviteCodeForEmail(userEmail);
 
     if (!teacherRecord) {
@@ -1070,7 +1090,7 @@
     sortedStudents.forEach(std => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${std.name}</strong></td>
+        <td><strong>${getStudentDisplayName(std)}</strong></td>
         <td>🪙 ${std.totalGold || 0} Gold</td>
         <td>⭐ ${std.totalSolved || 0}문제</td>
         <td>⚔️ ${std.bossCount || 0}회</td>
@@ -1113,7 +1133,7 @@
   }
 
   function showWeakTableChartModal(student) {
-    document.getElementById('chartStudentName').textContent = student.name;
+    document.getElementById('chartStudentName').textContent = getStudentDisplayName(student);
     const container = document.getElementById('chartBarsContainer');
     container.innerHTML = '';
 
@@ -1193,11 +1213,9 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v21') {
+      if (e.key === 'gugudan_adventure_data_v22') {
         loadStorageData();
-        if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
-          renderTeacherAdminPage();
-        }
+        refreshAllLiveViews();
       }
     });
 
@@ -1239,7 +1257,7 @@
       });
     });
 
-    // Student Login Submit (Same Name + Code -> RESUME existing progress!)
+    // Student Login Submit (Exact Class Name Parentheses & Real-Time Sync)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1289,7 +1307,7 @@
       const targetClassNum = Number(classInfo.classNum || 1);
       const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
 
-      // Account Resume Matching: Look for existing student with same Name and Invite Code!
+      // Account Resume Matching
       let studentUser = sampleClassStudents.find(
         s => s.name === name && s.inviteCode === invite
       );
@@ -1314,7 +1332,6 @@
           weakTableErrors: {}
         };
       } else {
-        // Resume existing account & update latest class name
         studentUser.grade = targetGrade;
         studentUser.classNum = targetClassNum;
         studentUser.className = displayClassName;
@@ -1391,7 +1408,6 @@
 
       if (registeredTeachersMap[currentUser.email]) {
         registeredTeachersMap[currentUser.email].grade = newGrade;
-        registeredTeachersMap[currentUser.email].classNum = newClassNum;
         registeredTeachersMap[currentUser.email].className = displayClass;
       }
 
