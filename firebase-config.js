@@ -1,54 +1,57 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Firebase Config & Auth Integration
-   Supports:
-   - Firebase Auth: Google OAuth Login & Anonymous Login
-   - Firebase Firestore DB: Realtime Leaderboard Sync & Class Student History
-   - Fallback Mode: Runs seamlessly on LocalStorage if keys are pending configuration.
+   구구단 어드벤처 (Multiplication Adventure) - Safe Firebase Config
+   Environment Variables & Secure Injection
+   Prevents API Keys from being exposed in public GitHub repositories.
    ========================================================================== */
 
-// ⚠️ 아래 firebaseConfig 객체의 값을 본인의 Firebase 콘솔 프로젝트 설정 값으로 채워주세요.
+// Safely read from Environment Variables (Vercel / Local .env)
 const firebaseConfig = {
-  apiKey: "YOUR_FIREBASE_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: (typeof process !== 'undefined' && process.env?.FIREBASE_API_KEY) || window.ENV?.FIREBASE_API_KEY || "YOUR_FIREBASE_API_KEY",
+  authDomain: (typeof process !== 'undefined' && process.env?.FIREBASE_AUTH_DOMAIN) || window.ENV?.FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: (typeof process !== 'undefined' && process.env?.FIREBASE_PROJECT_ID) || window.ENV?.FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+  storageBucket: (typeof process !== 'undefined' && process.env?.FIREBASE_STORAGE_BUCKET) || window.ENV?.FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: (typeof process !== 'undefined' && process.env?.FIREBASE_MESSAGING_SENDER_ID) || window.ENV?.FIREBASE_MESSAGING_SENDER_ID || "YOUR_MESSAGING_SENDER_ID",
+  appId: (typeof process !== 'undefined' && process.env?.FIREBASE_APP_ID) || window.ENV?.FIREBASE_APP_ID || "YOUR_APP_ID"
 };
 
-// Check if Firebase keys are configured
 const isFirebaseConfigured = firebaseConfig.apiKey !== "YOUR_FIREBASE_API_KEY";
 
 if (!isFirebaseConfigured) {
   console.info(
-    "💡 [Firebase 안내] firebase-config.js에 실제 Firebase API Key가 설정되지 않아 로컬 오프라인 모드(LocalStorage)로 작동 중입니다.\n" +
-    "Firebase 구글 로그인 및 실시간 클라우드 DB를 사용하시려면 README.md의 안내를 참고해 발급받은 키를 채워주세요."
+    "💡 [보안 안내] Firebase API Key가 Vercel 환경변수(Environment Variables)로 안전하게 주입되기 전까지 오프라인 로컬 보안 모드(LocalStorage)로 작동합니다.\n" +
+    "GitHub 공개 저장소에 키가 노출되지 않도록 Vercel 대시보드에서 환경변수를 설정해주세요."
   );
 }
 
-// Global Firebase helper object exported to window
+// Global Firebase helper object
 window.GugudanFirebase = {
   isConfigured: isFirebaseConfigured,
   config: firebaseConfig,
   
-  // Placeholder methods ready for Firebase Auth & Firestore SDK bindings
   async signInWithGoogle() {
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseConfigured || typeof firebase === 'undefined') {
       console.log("LocalStorage Fallback: Google Login simulated");
       return null;
     }
-    // Firebase SDK Auth Logic will run here
-  },
-
-  async signInAnonymously() {
-    if (!isFirebaseConfigured) {
-      console.log("LocalStorage Fallback: Anonymous Login simulated");
-      return null;
+    try {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      return await firebase.auth().signInWithPopup(provider);
+    } catch (err) {
+      console.error("Firebase Google Auth Error:", err);
+      throw err;
     }
   },
 
-  async syncStudentLog(studentData) {
-    if (!isFirebaseConfigured) return;
-    // Firestore DB setDoc / updateDoc logic
+  async signInAnonymously() {
+    if (!isFirebaseConfigured || typeof firebase === 'undefined') {
+      console.log("LocalStorage Fallback: Anonymous Login simulated");
+      return null;
+    }
+    try {
+      return await firebase.auth().signInAnonymously();
+    } catch (err) {
+      console.error("Firebase Anon Auth Error:", err);
+      throw err;
+    }
   }
 };
