@@ -1,10 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v30
-   Fixed Infinite Login Modal Reopening Loop & Smooth Google Auth Navigation
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v31
+   Bulletproof Multi-Option Teacher Account Isolation Engine
    Fixes & Guarantees:
-   1. Google Auth Transition: Fixes modal stuck loop when clicking Google Login.
-   2. Seamless View Transition: Instantly closes login modal and navigates to Lobby/Admin Page upon Google Auth success.
-   3. 1-to-1 Teacher Account Isolation maintained 100%.
+   1. Multi-Option Teacher Login: Supports Google OAuth & Direct Teacher Email Input.
+   2. Eliminates Popup-Blocked Modal Loops: If popup is blocked by browser, provides seamless direct email login on the spot.
+   3. 1-to-1 Teacher Account Isolation: Every distinct Teacher Email gets its own distinct Invite Code, Class Name, and Student Dashboard.
    ========================================================================== */
 
 (function () {
@@ -29,14 +29,14 @@
   let registeredClasses = {};
   let registeredTeachersMap = {};
   let allPlayersMap = {};
-  let isLoggingInProgress = false; // Flag to prevent modal loop during authentication
+  let isLoggingInProgress = false;
 
   // Firebase Firestore Reference
   let db = null;
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v30] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v31] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -201,14 +201,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v30', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v31', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v30');
+      localStorage.removeItem('gugudan_logged_user_v31');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v30');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v31');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -220,7 +220,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v30');
+    const saved = localStorage.getItem('gugudan_adventure_data_v31');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -247,7 +247,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v30', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v31', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
@@ -1396,7 +1396,7 @@
     ensureFirebaseAuth();
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v30') {
+      if (e.key === 'gugudan_adventure_data_v31') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1525,7 +1525,7 @@
       showView('lobbyView');
     });
 
-    // Teacher Single-Click Google OAuth Login Button
+    // Teacher Google OAuth Button Click Handler
     const teacherGoogleBtn = document.getElementById('teacherGoogleLoginBtn');
     if (teacherGoogleBtn) {
       teacherGoogleBtn.addEventListener('click', async () => {
@@ -1552,14 +1552,25 @@
         } catch (err) {
           isLoggingInProgress = false;
           console.error("Google Auth Error:", err);
-          if (err.code !== 'auth/popup-closed-by-user') {
-            const inputEmail = prompt("구글 로그인 이메일을 입력하세요:", "teacherA@school.com");
-            if (inputEmail) {
-              const name = inputEmail.split('@')[0] + ' 선생님';
-              await loginTeacherAccount(name, inputEmail.trim());
-            }
-          }
+          alert("⚠️ 구글 팝업 로그인이 닫혔거나 차단되었습니다.\n아래 [교사 이메일 직접 입력]란에 이메일을 입력하여 접속해 주세요!");
         }
+      });
+    }
+
+    // Teacher Direct Email Login Submit Handler (100% Guaranteed Bulletproof Entry!)
+    const teacherLoginForm = document.getElementById('teacherLoginForm');
+    if (teacherLoginForm) {
+      teacherLoginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const inputEmail = document.getElementById('teacherEmailDirectInput').value.trim();
+
+        if (!inputEmail) {
+          alert('교사 이메일 주소를 입력해 주세요.');
+          return;
+        }
+
+        const name = inputEmail.split('@')[0] + ' 선생님';
+        await loginTeacherAccount(name, inputEmail);
       });
     }
 
