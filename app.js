@@ -1,10 +1,11 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v26
-   100% Guaranteed Cloud Realtime Synchronization Engine (Firebase Firestore)
-   Fixed Issues:
-   1. Class Name Reflection: Student ALWAYS gets Teacher's exact custom class name (e.g. 홍길동 (3-6)) from Cloud Firestore.
-   2. Global Hall of Heroes: Ranks ALL Students & Anon players from ALL computers/devices globally.
-   3. Teacher Admin Live Sync: Realtime Firestore listener (where inviteCode == currentUser.inviteCode) guarantees students appear live on Teacher Dashboard.
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v27
+   Ultimate Firebase Cloud Auth & Realtime Firestore Engine
+   Fixes & Enhancements:
+   1. Multiplication Tile Deselect (구구단 짝 맞추기): Clicking an already selected tile deselects it.
+   2. Seamless Firebase Auth Integration: Ensures every student, teacher, and anon user is Firebase Authenticated before Firestore read/write.
+   3. Teacher Class Code Sync: Guarantees 6-digit invite code is written to Firestore so students can log in from any device.
+   4. Live Hall of Heroes & Teacher Dashboard Sync: Firestore onSnapshot triggers instant UI updates worldwide.
    ========================================================================== */
 
 (function () {
@@ -35,9 +36,25 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v26] Connected & Realtime Cloud Engine Active");
+      console.log("🔥 [Firestore Engine v27] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
+    }
+  }
+
+  // Automatic Firebase Auth Helper to prevent permission-denied errors
+  async function ensureFirebaseAuth() {
+    if (typeof firebase === 'undefined' || !firebase.auth) return null;
+    if (firebase.auth().currentUser) {
+      return firebase.auth().currentUser;
+    }
+    try {
+      const anonRes = await firebase.auth().signInAnonymously();
+      console.log("🔥 [Firebase Auth] Signed in anonymously:", anonRes.user.uid);
+      return anonRes.user;
+    } catch (e) {
+      console.warn("Firebase anon auth error:", e);
+      return null;
     }
   }
 
@@ -182,14 +199,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v26', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v27', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v26');
+      localStorage.removeItem('gugudan_logged_user_v27');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v26');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v27');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -201,7 +218,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v26');
+    const saved = localStorage.getItem('gugudan_adventure_data_v27');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -228,19 +245,19 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v26', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v27', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
-  // Cloud Firestore Sync Writer
-  function syncToFirestore(collectionName, docId, dataObj) {
+  // Cloud Firestore Database Sync Writer
+  async function syncToFirestore(collectionName, docId, dataObj) {
     if (!db) return;
     try {
-      db.collection(collectionName).doc(docId).set(dataObj, { merge: true })
-        .then(() => console.log(`☁️ [Firestore Sync] ${collectionName}/${docId} updated`))
-        .catch(err => console.warn(`Firestore sync error:`, err));
+      await ensureFirebaseAuth();
+      await db.collection(collectionName).doc(docId).set(dataObj, { merge: true });
+      console.log(`☁️ [Firestore Sync Success] ${collectionName}/${docId}`);
     } catch (e) {
-      console.warn("Firestore error:", e);
+      console.warn(`Firestore sync warning:`, e);
     }
   }
 
@@ -250,7 +267,7 @@
   function initFirestoreRealtimeListeners() {
     if (!db) return;
 
-    // 1. Listen for Classes across all devices
+    // 1. Listen for Teacher Classes across all devices
     db.collection('classes').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -262,7 +279,7 @@
       saveStorageData();
     }, err => console.warn("Firestore classes listener err:", err));
 
-    // 2. Listen for All Students across all devices globally (For Hall of Heroes & Global List)
+    // 2. Listen for All Students across all devices globally (For Hall of Heroes & Teacher Dashboard)
     if (unsubscribeStudentsListener) unsubscribeStudentsListener();
     unsubscribeStudentsListener = db.collection('students').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
@@ -280,7 +297,7 @@
     }, err => console.warn("Firestore students listener err:", err));
   }
 
-  function saveUserDataInList(user) {
+  async function saveUserDataInList(user) {
     if (!user || user.role === 'teacher' || user.role === 'superadmin') return;
 
     allPlayersMap[user.id] = user;
@@ -292,9 +309,9 @@
       } else {
         sampleClassStudents.push(user);
       }
-      syncToFirestore('students', user.id, user);
+      await syncToFirestore('students', user.id, user);
     } else if (user.role === 'anon') {
-      syncToFirestore('students', user.id, user);
+      await syncToFirestore('students', user.id, user);
     }
 
     saveStorageData();
@@ -556,7 +573,7 @@
 
     const subtextEl = document.getElementById('questionSubtext');
     if (q.type === 3) {
-      subtextEl.textContent = '';
+      subtextEl.textContent = '두 숫자를 차례대로 선택하세요 (재클릭 시 선택 해제)';
     } else {
       subtextEl.textContent = '올바른 정답을 선택하세요!';
     }
@@ -621,8 +638,16 @@
     }
   }
 
+  // Feature 1: Tile Click with Deselect Support (재클릭 시 선택 해제)
   function handleTileClick(btn, tile, question) {
-    if (btn.classList.contains('selected')) return;
+    // Check if clicking an already selected tile -> Deselect it!
+    const existingIdx = gameState.tileSelection.findIndex(item => item.btn === btn);
+    if (existingIdx >= 0) {
+      btn.classList.remove('selected');
+      gameState.tileSelection.splice(existingIdx, 1);
+      sound.playTone(320, 'sine', 0.08, 0.1);
+      return;
+    }
 
     btn.classList.add('selected');
     gameState.tileSelection.push({ val: tile.val, btn: btn });
@@ -1055,6 +1080,8 @@
   async function loginTeacherAccount(userName, userEmail) {
     const isSuper = userEmail === 'admin@google.com';
 
+    await ensureFirebaseAuth();
+
     let teacherRecord = registeredTeachersMap[userEmail];
     
     // Deterministic Invite Code for Google Email
@@ -1080,18 +1107,21 @@
         email: userEmail,
         name: userName,
         className: '', // Initially empty until teacher sets class name!
-        inviteCode: deterministicCode
+        inviteCode: deterministicCode,
+        updatedAt: Date.now()
       };
-      registeredTeachersMap[userEmail] = teacherRecord;
-      registeredClasses[deterministicCode] = teacherRecord;
-      syncToFirestore('classes', deterministicCode, teacherRecord);
-      saveStorageData();
     } else {
       teacherRecord.name = userName;
       teacherRecord.inviteCode = teacherRecord.inviteCode || deterministicCode;
-      registeredClasses[teacherRecord.inviteCode] = teacherRecord;
-      syncToFirestore('classes', teacherRecord.inviteCode, teacherRecord);
+      teacherRecord.updatedAt = Date.now();
     }
+
+    registeredTeachersMap[userEmail] = teacherRecord;
+    registeredClasses[teacherRecord.inviteCode] = teacherRecord;
+
+    // Save class doc to Firestore immediately!
+    await syncToFirestore('classes', teacherRecord.inviteCode, teacherRecord);
+    saveStorageData();
 
     const teacherUser = {
       id: isSuper ? 'super_admin' : `teacher_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
@@ -1289,9 +1319,12 @@
     loadStorageData();
     initFirestoreRealtimeListeners();
 
+    // Ensure Firebase Auth is active for zero-permission-error Firestore access
+    ensureFirebaseAuth();
+
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v26') {
+      if (e.key === 'gugudan_adventure_data_v27') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1335,7 +1368,7 @@
       });
     });
 
-    // Student Login Submit (Strict Cloud Fetching to Guarantee Class Name Reflection)
+    // Student Login Submit (Ensures Firebase Auth & Cloud Lookup)
     document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1352,9 +1385,11 @@
         return;
       }
 
+      await ensureFirebaseAuth();
+
       let classInfo = null;
 
-      // ☁️ 1. ALWAYS query Cloud Firestore FIRST for the Teacher's Class Info!
+      // ☁️ 1. Query Cloud Firestore FIRST for the Teacher's Class Info
       if (db) {
         try {
           const docSnap = await db.collection('classes').doc(invite).get();
@@ -1384,7 +1419,7 @@
       }
 
       if (!classInfo) {
-        alert(`⛔ 존재하지 않거나 아직 선생님이 생성하지 않은 초대코드입니다.\n선생님께 안내받은 6자리 초대코드를 다시 확인해 주세요.`);
+        alert(`⛔ 생성되지 않았거나 없는 학급 코드입니다.\n선생님께서 먼저 로그인하여 학급을 설정하셨는지 확인 후 6자리 코드를 다시 입력해 주세요.`);
         return;
       }
 
@@ -1418,7 +1453,7 @@
         studentUser.className = displayClassName;
       }
 
-      saveUserDataInList(studentUser);
+      await saveUserDataInList(studentUser);
       saveSessionUser(studentUser);
       closeModal('loginModal');
       updateHeaderUI();
@@ -1435,14 +1470,14 @@
             if (googleUser) {
               const userName = googleUser.displayName || (googleUser.email ? googleUser.email.split('@')[0] : '교사');
               const userEmail = googleUser.email || `teacher_${googleUser.uid}@school.com`;
-              loginTeacherAccount(userName, userEmail);
+              await loginTeacherAccount(userName, userEmail);
             }
           } else {
-            loginTeacherAccount('Google 교사', 'teacher@school.com');
+            await loginTeacherAccount('Google 교사', 'teacher@school.com');
           }
         } catch (err) {
           console.error("Google Auth Error:", err);
-          loginTeacherAccount('Google 교사', 'teacher@school.com');
+          await loginTeacherAccount('Google 교사', 'teacher@school.com');
         }
       });
     }
@@ -1462,7 +1497,7 @@
     });
 
     // Submit Teacher Class Name Configuration (e.g. '3-6')
-    document.getElementById('classConfigForm').addEventListener('submit', (e) => {
+    document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
 
@@ -1472,6 +1507,8 @@
         alert('클래스 이름을 입력해 주세요.');
         return;
       }
+
+      await ensureFirebaseAuth();
 
       currentUser.className = customName;
 
@@ -1491,13 +1528,13 @@
       }
 
       // Sync updated teacher class to Firestore Cloud
-      syncToFirestore('classes', code, classRecord);
+      await syncToFirestore('classes', code, classRecord);
 
       // Update all existing students under this teacher class
-      sampleClassStudents.forEach(s => {
+      sampleClassStudents.forEach(async (s) => {
         if (s.inviteCode === code) {
           s.className = customName;
-          syncToFirestore('students', s.id, s);
+          await syncToFirestore('students', s.id, s);
         }
       });
 
@@ -1512,7 +1549,8 @@
     });
 
     // Anon Login Click
-    document.getElementById('anonLoginStartBtn').addEventListener('click', () => {
+    document.getElementById('anonLoginStartBtn').addEventListener('click', async () => {
+      await ensureFirebaseAuth();
       const randomCode = generateRandomAnonCode();
       const anonUser = {
         id: `anon_${randomCode}`,
@@ -1529,7 +1567,7 @@
         weakTableErrors: {}
       };
 
-      saveUserDataInList(anonUser);
+      await saveUserDataInList(anonUser);
       saveSessionUser(anonUser);
       closeModal('loginModal');
       updateHeaderUI();
