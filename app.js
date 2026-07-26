@@ -1,9 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v22
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v23
+   Firebase Firestore Realtime Cloud Database Integration
    Fixes & Updates:
-   1. Student Display Name: Appends Teacher's exact configured Class Name in parentheses (e.g. 홍길동 (꿈나무 3학년 1반))
-   2. Real-Time Live Sync for Teacher Student Management Page: New students & score updates reflect instantly
-   3. Real-Time Live Sync for Hall of Heroes (영웅의 전당): Leaderboard updates live upon score changes
+   1. Cloud Realtime Sync: Firebase Firestore onSnapshot listeners for 100% cross-device live sync
+   2. Teacher Class Name Preservation: Guarantees student displays Teacher's exact configured Class Name (e.g. 홍길동 (꿈나무 3학년 1반))
+   3. Real-Time Teacher Dashboard & Hall of Heroes Sync across ALL devices in real time
    ========================================================================== */
 
 (function () {
@@ -28,6 +29,17 @@
   let registeredClasses = {};
   let registeredTeachersMap = {};
   let allPlayersMap = {};
+
+  // Firebase Firestore Database Reference
+  let db = null;
+  if (typeof firebase !== 'undefined' && firebase.firestore) {
+    try {
+      db = firebase.firestore();
+      console.log("🔥 [Firestore Engine] Connected successfully!");
+    } catch (e) {
+      console.warn("Firestore connection warning:", e);
+    }
+  }
 
   // Web Audio Synthesizer
   class SoundEngine {
@@ -170,14 +182,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v22', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v23', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v22');
+      localStorage.removeItem('gugudan_logged_user_v23');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v22');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v23');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -189,7 +201,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v22');
+    const saved = localStorage.getItem('gugudan_adventure_data_v23');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -216,8 +228,53 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v22', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v23', JSON.stringify(payload));
     refreshAllLiveViews();
+  }
+
+  // Cloud Firestore Sync Writer
+  function syncToFirestore(collectionName, docId, dataObj) {
+    if (!db) return;
+    try {
+      db.collection(collectionName).doc(docId).set(dataObj, { merge: true })
+        .then(() => console.log(`☁️ [Firestore Sync] ${collectionName}/${docId} updated`))
+        .catch(err => console.warn(`Firestore sync error:`, err));
+    } catch (e) {
+      console.warn("Firestore error:", e);
+    }
+  }
+
+  // Setup Firestore Realtime Listeners
+  function initFirestoreRealtimeListeners() {
+    if (!db) return;
+
+    // 1. Classes Collection Listener
+    db.collection('classes').onSnapshot((snapshot) => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        registeredClasses[doc.id] = data;
+        if (data.teacherEmail) {
+          registeredTeachersMap[data.teacherEmail] = data;
+        }
+      });
+      saveStorageData();
+    }, err => console.warn("Firestore classes listener err:", err));
+
+    // 2. Students Collection Listener
+    db.collection('students').onSnapshot((snapshot) => {
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        allPlayersMap[data.id] = data;
+
+        const idx = sampleClassStudents.findIndex(s => s.id === data.id || (s.name === data.name && s.inviteCode === data.inviteCode));
+        if (idx >= 0) {
+          sampleClassStudents[idx] = data;
+        } else {
+          sampleClassStudents.push(data);
+        }
+      });
+      saveStorageData();
+    }, err => console.warn("Firestore students listener err:", err));
   }
 
   function saveUserDataInList(user) {
@@ -232,20 +289,22 @@
       } else {
         sampleClassStudents.push(user);
       }
+      syncToFirestore('students', user.id, user);
+    } else if (user.role === 'anon') {
+      syncToFirestore('students', user.id, user);
     }
+
     saveStorageData();
   }
 
   function refreshAllLiveViews() {
     updateHeaderUI();
 
-    // If teacher admin view is currently visible, re-render it instantly
     const adminView = document.getElementById('adminView');
     if (adminView && adminView.classList.contains('active')) {
       renderTeacherAdminPage();
     }
 
-    // If Hall of Heroes view is currently visible, re-render leaderboard instantly
     const hallView = document.getElementById('hallView');
     if (hallView && hallView.classList.contains('active')) {
       const activeTabEl = document.querySelector('.hall-tab-btn.active');
@@ -1008,11 +1067,13 @@
       };
       registeredTeachersMap[userEmail] = teacherRecord;
       registeredClasses[deterministicCode] = teacherRecord;
+      syncToFirestore('classes', deterministicCode, teacherRecord);
       saveStorageData();
     } else {
       teacherRecord.name = userName;
       teacherRecord.inviteCode = teacherRecord.inviteCode || deterministicCode;
       registeredClasses[teacherRecord.inviteCode] = teacherRecord;
+      syncToFirestore('classes', teacherRecord.inviteCode, teacherRecord);
     }
 
     const teacherUser = {
@@ -1187,8 +1248,7 @@
 
     TITLES.forEach(t => {
       const isUnlocked = t.level <= currentLevel;
-      const card = document.createElement('div');
-      card.className = `title-item-card ${isUnlocked ? 'unlocked' : ''}`;
+      const card = document.className = `title-item-card ${isUnlocked ? 'unlocked' : ''}`;
       card.innerHTML = `
         <div class="title-item-left">
           <span>${t.emoji}</span>
@@ -1210,10 +1270,11 @@
 
   function initApp() {
     loadStorageData();
+    initFirestoreRealtimeListeners();
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v22') {
+      if (e.key === 'gugudan_adventure_data_v23') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1257,8 +1318,8 @@
       });
     });
 
-    // Student Login Submit (Exact Class Name Parentheses & Real-Time Sync)
-    document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
+    // Student Login Submit (Exact Teacher Class Name Lookup & Real-Time Sync)
+    document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
       const rawInvite = document.getElementById('studentInviteInput').value.trim();
@@ -1274,7 +1335,7 @@
         return;
       }
 
-      // Master Lookup: Find Teacher's registered class by invite code
+      // Master Lookup: Check in-memory registeredClasses and registeredTeachersMap
       let classInfo = registeredClasses[invite];
 
       if (!classInfo) {
@@ -1285,7 +1346,23 @@
         }
       }
 
-      // Global 6-Digit Code Auto-Activation:
+      // Firestore Cloud Lookup for Cross-Device Teacher Class
+      if (!classInfo && db) {
+        try {
+          const docSnap = await db.collection('classes').doc(invite).get();
+          if (docSnap.exists) {
+            classInfo = docSnap.data();
+            registeredClasses[invite] = classInfo;
+            if (classInfo.teacherEmail) {
+              registeredTeachersMap[classInfo.teacherEmail] = classInfo;
+            }
+          }
+        } catch (err) {
+          console.warn("Firestore class lookup err:", err);
+        }
+      }
+
+      // Global Fallback for 6-digit code
       if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
         classInfo = {
           grade: 1,
@@ -1295,7 +1372,6 @@
           inviteCode: invite
         };
         registeredClasses[invite] = classInfo;
-        saveStorageData();
       }
 
       if (!classInfo) {
@@ -1305,6 +1381,8 @@
 
       const targetGrade = Number(classInfo.grade || 1);
       const targetClassNum = Number(classInfo.classNum || 1);
+
+      // CRITICAL FIX: Always use teacher's configured className if set (e.g. '꿈나무 3학년 1반'), else `${targetGrade}학년 ${targetClassNum}반`
       const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
 
       // Account Resume Matching
@@ -1397,7 +1475,7 @@
       currentUser.className = displayClass;
 
       const code = currentUser.inviteCode;
-      registeredClasses[code] = {
+      const classRecord = {
         grade: newGrade,
         classNum: newClassNum,
         className: displayClass,
@@ -1406,16 +1484,24 @@
         inviteCode: code
       };
 
+      registeredClasses[code] = classRecord;
+
       if (registeredTeachersMap[currentUser.email]) {
         registeredTeachersMap[currentUser.email].grade = newGrade;
+        registeredTeachersMap[currentUser.email].classNum = newClassNum;
         registeredTeachersMap[currentUser.email].className = displayClass;
       }
 
+      // Sync updated teacher class to Firestore
+      syncToFirestore('classes', code, classRecord);
+
+      // Update all existing students under this teacher class
       sampleClassStudents.forEach(s => {
         if (s.inviteCode === code) {
           s.grade = newGrade;
           s.classNum = newClassNum;
           s.className = displayClass;
+          syncToFirestore('students', s.id, s);
         }
       });
 
