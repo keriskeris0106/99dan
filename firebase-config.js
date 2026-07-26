@@ -1,6 +1,6 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v11
-   Firebase Auth (Google OAuth & Anonymous Login) with AuthState Listener
+   구구단 어드벤처 (Multiplication Adventure) - Firebase Engine v12
+   Firebase Auth Engine with Clean Non-blocking Google OAuth & Popup Support
    ========================================================================== */
 
 const firebaseConfig = {
@@ -20,7 +20,7 @@ if (typeof firebase !== 'undefined' && firebase.initializeApp) {
       firebase.initializeApp(firebaseConfig);
     }
     isFirebaseInitialized = true;
-    console.log("✅ [Firebase Engine v11] Initialized successfully for dan-d1b45");
+    console.log("✅ [Firebase Engine v12] Initialized successfully for dan-d1b45");
   } catch (err) {
     console.warn("⚠️ [Firebase] Init warning:", err);
   }
@@ -30,17 +30,12 @@ window.GugudanFirebase = {
   isConfigured: isFirebaseInitialized,
   config: firebaseConfig,
 
-  // Direct Google Auth Popup with Forced Account Selection
+  // Direct Google Auth Popup Support
   async signInWithGoogle() {
     if (typeof firebase === 'undefined' || !firebase.auth) {
       console.warn("Firebase Auth SDK not loaded");
       return null;
     }
-
-    // Force sign out previous session before Google Auth popup so account selector always appears!
-    try {
-      await firebase.auth().signOut();
-    } catch (e) {}
 
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');

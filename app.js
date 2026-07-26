@@ -1,10 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v29
-   1-to-1 Isolated Teacher Class Architecture
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v30
+   Fixed Infinite Login Modal Reopening Loop & Smooth Google Auth Navigation
    Fixes & Guarantees:
-   1. Teacher Account Isolation: Every Google Account gets its own unique Class Name, Invite Code, and Student List.
-   2. No Cross-Account Leakage: Switching teacher accounts immediately clears local cache and fetches Account B's distinct class.
-   3. Tile Deselect, Joint Ranks, and Cumulative Gold ranking maintained 100%.
+   1. Google Auth Transition: Fixes modal stuck loop when clicking Google Login.
+   2. Seamless View Transition: Instantly closes login modal and navigates to Lobby/Admin Page upon Google Auth success.
+   3. 1-to-1 Teacher Account Isolation maintained 100%.
    ========================================================================== */
 
 (function () {
@@ -29,13 +29,14 @@
   let registeredClasses = {};
   let registeredTeachersMap = {};
   let allPlayersMap = {};
+  let isLoggingInProgress = false; // Flag to prevent modal loop during authentication
 
   // Firebase Firestore Reference
   let db = null;
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v29] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v30] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -200,14 +201,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v29', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v30', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v29');
+      localStorage.removeItem('gugudan_logged_user_v30');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v29');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v30');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -219,7 +220,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v29');
+    const saved = localStorage.getItem('gugudan_adventure_data_v30');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -246,7 +247,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v29', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v30', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
@@ -358,6 +359,7 @@
   }
 
   function openModal(modalId) {
+    if (isLoggingInProgress && modalId === 'loginModal') return;
     const modal = document.getElementById(modalId);
     if (modal) {
       modal.classList.add('active');
@@ -406,7 +408,7 @@
       gameState.timerId = null;
     }
 
-    if (!currentUser) {
+    if (!currentUser && !isLoggingInProgress) {
       openModal('loginModal');
       showView('lobbyView', false);
     } else {
@@ -1144,14 +1146,13 @@
     const isSuper = userEmail.toLowerCase() === 'admin@google.com';
     const cleanEmail = userEmail.toLowerCase().trim();
 
+    isLoggingInProgress = true;
+
     await ensureFirebaseAuth();
 
-    // Generate unique invite code mapped 1-to-1 to this exact Google Email!
     const deterministicCode = getTeacherInviteCodeForEmail(cleanEmail);
-
     let teacherRecord = registeredTeachersMap[cleanEmail];
 
-    // Fetch existing teacher class from Firestore Cloud using cleanEmail or deterministicCode
     if (db) {
       try {
         const qSnap = await db.collection('classes').where('teacherEmail', '==', cleanEmail).get();
@@ -1172,12 +1173,11 @@
     }
 
     if (!teacherRecord) {
-      // Create a brand new distinct class record for this specific teacher email!
       teacherRecord = {
         email: cleanEmail,
         teacherEmail: cleanEmail,
         name: userName,
-        className: '', // Initially empty until this specific teacher sets their class name!
+        className: '', // Initially empty until teacher sets class name!
         inviteCode: deterministicCode,
         updatedAt: Date.now()
       };
@@ -1192,7 +1192,6 @@
     registeredTeachersMap[cleanEmail] = teacherRecord;
     registeredClasses[teacherRecord.inviteCode] = teacherRecord;
 
-    // Save class doc to Firestore under its unique inviteCode
     await syncToFirestore('classes', teacherRecord.inviteCode, teacherRecord);
     saveStorageData();
 
@@ -1212,7 +1211,9 @@
     updateTeacherDashboardUI();
 
     closeModal('loginModal');
+    isLoggingInProgress = false;
     updateHeaderUI();
+
     showView(isSuper ? 'adminView' : 'lobbyView');
   }
 
@@ -1395,7 +1396,7 @@
     ensureFirebaseAuth();
 
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v29') {
+      if (e.key === 'gugudan_adventure_data_v30') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1403,7 +1404,7 @@
 
     if (window.GugudanFirebase && window.GugudanFirebase.onAuthStateChanged) {
       window.GugudanFirebase.onAuthStateChanged((fbUser) => {
-        if (fbUser && !fbUser.isAnonymous) {
+        if (fbUser && !fbUser.isAnonymous && !currentUser) {
           const userName = fbUser.displayName || (fbUser.email ? fbUser.email.split('@')[0] : '교사');
           const userEmail = fbUser.email || `teacher_${fbUser.uid}@school.com`;
           loginTeacherAccount(userName, userEmail);
@@ -1524,29 +1525,32 @@
       showView('lobbyView');
     });
 
-    // Teacher Single-Click Google OAuth Login Button with 1-to-1 Account Isolation
+    // Teacher Single-Click Google OAuth Login Button
     const teacherGoogleBtn = document.getElementById('teacherGoogleLoginBtn');
     if (teacherGoogleBtn) {
       teacherGoogleBtn.addEventListener('click', async () => {
+        isLoggingInProgress = true;
         try {
-          // Clear active session to ensure clean login per Google Account
-          saveSessionUser(null);
-
           if (window.GugudanFirebase && window.GugudanFirebase.signInWithGoogle) {
             const googleUser = await window.GugudanFirebase.signInWithGoogle();
             if (googleUser) {
               const userName = googleUser.displayName || (googleUser.email ? googleUser.email.split('@')[0] : '교사');
               const userEmail = googleUser.email || `teacher_${googleUser.uid}@school.com`;
               await loginTeacherAccount(userName, userEmail);
+            } else {
+              isLoggingInProgress = false;
             }
           } else {
             const inputEmail = prompt("교사 구글 이메일을 입력하세요 (예: teacherA@gmail.com):", "teacherA@gmail.com");
             if (inputEmail) {
               const name = inputEmail.split('@')[0] + ' 선생님';
               await loginTeacherAccount(name, inputEmail.trim());
+            } else {
+              isLoggingInProgress = false;
             }
           }
         } catch (err) {
+          isLoggingInProgress = false;
           console.error("Google Auth Error:", err);
           if (err.code !== 'auth/popup-closed-by-user') {
             const inputEmail = prompt("구글 로그인 이메일을 입력하세요:", "teacherA@school.com");
