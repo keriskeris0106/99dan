@@ -1,10 +1,10 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v12
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v13
    Fixes & Updates:
-   1. Google Auth Name/ID Integration (Displays real Google Name/ID instead of '김선생')
-   2. Removed Teacher Email Text display from Teacher Admin Page UI
-   3. '클래스 관리하기' button repositioned to the right of Gold Display in Header
-   4. Hall of Heroes Excludes Teachers (Ranks only Students & Anonymous users)
+   1. Removed dummy/hardcoded example sample student data
+   2. Anonymous & Class Student real-time record persistence (Gold, Clears, Boss Time)
+   3. Real player ranking in Hall of Heroes (All Class Students + Anonymous Users)
+   4. Clean empty state message when no real players are registered yet
    ========================================================================== */
 
 (function () {
@@ -31,6 +31,7 @@
   };
 
   let registeredTeachersMap = {};
+  let allPlayersMap = {}; // Persistent map of all real players (Students & Anon)
 
   // Web Audio Synthesizer
   class SoundEngine {
@@ -171,14 +172,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v12', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v13', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v12');
+      localStorage.removeItem('gugudan_logged_user_v13');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v12');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v13');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -190,107 +191,25 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v12');
+    const saved = localStorage.getItem('gugudan_adventure_data_v13');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         sampleClassStudents = parsed.students || [];
         if (parsed.classes) registeredClasses = parsed.classes;
         if (parsed.teachers) registeredTeachersMap = parsed.teachers;
+        if (parsed.players) allPlayersMap = parsed.players;
       } catch (e) {
         console.error('Storage parse error:', e);
       }
     }
 
-    if (!sampleClassStudents || sampleClassStudents.length === 0) {
-      sampleClassStudents = [
-        {
-          id: 'std_1',
-          name: '김민준',
-          role: 'student',
-          grade: 3,
-          classNum: 2,
-          inviteCode: '639218',
-          titleIndex: 1,
-          totalGold: 240,
-          currentGold: 40,
-          totalSolved: 128,
-          weeklySolved: 42,
-          bossCount: 12,
-          bossFastestTime: 18.4,
-          gameClears: [8, 5, 6],
-          weakTableErrors: { 2: 1, 3: 2, 4: 1, 5: 0, 6: 4, 7: 9, 8: 12, 9: 7 }
-        },
-        {
-          id: 'std_2',
-          name: '이서연',
-          role: 'student',
-          grade: 3,
-          classNum: 2,
-          inviteCode: '639218',
-          titleIndex: 2,
-          totalGold: 580,
-          currentGold: 130,
-          totalSolved: 210,
-          weeklySolved: 75,
-          bossCount: 34,
-          bossFastestTime: 14.2,
-          gameClears: [15, 12, 11],
-          weakTableErrors: { 2: 0, 3: 1, 4: 2, 5: 1, 6: 3, 7: 5, 8: 6, 9: 4 }
-        },
-        {
-          id: 'std_3',
-          name: '박도윤',
-          role: 'student',
-          grade: 3,
-          classNum: 2,
-          inviteCode: '639218',
-          titleIndex: 0,
-          totalGold: 90,
-          currentGold: 15,
-          totalSolved: 45,
-          weeklySolved: 20,
-          bossCount: 3,
-          bossFastestTime: null,
-          gameClears: [3, 2, 1],
-          weakTableErrors: { 2: 2, 3: 3, 4: 5, 5: 1, 6: 7, 7: 10, 8: 8, 9: 11 }
-        },
-        {
-          id: 'std_4',
-          name: '최지우',
-          role: 'student',
-          grade: 3,
-          classNum: 2,
-          inviteCode: '639218',
-          titleIndex: 3,
-          totalGold: 920,
-          currentGold: 220,
-          totalSolved: 340,
-          weeklySolved: 95,
-          bossCount: 52,
-          bossFastestTime: 12.1,
-          gameClears: [22, 18, 19],
-          weakTableErrors: { 2: 0, 3: 0, 4: 1, 5: 0, 6: 2, 7: 3, 8: 4, 9: 3 }
-        },
-        {
-          id: 'std_5',
-          name: '정하은',
-          role: 'student',
-          grade: 3,
-          classNum: 2,
-          inviteCode: '639218',
-          titleIndex: 0,
-          totalGold: 150,
-          currentGold: 30,
-          totalSolved: 60,
-          weeklySolved: 31,
-          bossCount: 8,
-          bossFastestTime: 24.5,
-          gameClears: [4, 4, 2],
-          weakTableErrors: { 2: 1, 3: 2, 4: 2, 5: 0, 6: 5, 7: 8, 8: 9, 9: 6 }
-        }
-      ];
-      saveStorageData();
+    // No hardcoded dummy sample students! Initialize empty if new.
+    if (!sampleClassStudents) {
+      sampleClassStudents = [];
+    }
+    if (!allPlayersMap) {
+      allPlayersMap = {};
     }
   }
 
@@ -299,9 +218,27 @@
       students: sampleClassStudents,
       classes: registeredClasses,
       teachers: registeredTeachersMap,
+      players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v12', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v13', JSON.stringify(payload));
+  }
+
+  function saveUserDataInList(user) {
+    if (!user || user.role === 'teacher' || user.role === 'superadmin') return;
+
+    // Save into allPlayersMap for permanent local persistence
+    allPlayersMap[user.id] = user;
+
+    if (user.role === 'student') {
+      const idx = sampleClassStudents.findIndex(s => s.id === user.id);
+      if (idx >= 0) {
+        sampleClassStudents[idx] = user;
+      } else {
+        sampleClassStudents.push(user);
+      }
+    }
+    saveStorageData();
   }
 
   function updateUserTitleIndex(user) {
@@ -884,7 +821,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes - 교사 완전 제외, 오직 학생 & 익명만 목록 표출)
+  // 8. 영웅의 전당 (Hall of Heroes - Real Player Rankings Only: Class Students & Anon)
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -906,10 +843,14 @@
   }
 
   function getCombinedUserList() {
-    // Filter OUT any teachers or superadmins (Only include students & anon)
-    let list = sampleClassStudents.filter(u => u.role !== 'teacher' && u.role !== 'superadmin');
-    if (currentUser && currentUser.role === 'anon') {
-      list.push(currentUser);
+    // Get ALL real players (Students & Anon) from allPlayersMap
+    let list = Object.values(allPlayersMap).filter(u => u.role !== 'teacher' && u.role !== 'superadmin');
+    
+    // Include currentUser if active and not in map yet
+    if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
+      if (!list.some(u => u.id === currentUser.id)) {
+        list.push(currentUser);
+      }
     }
     return list;
   }
@@ -934,26 +875,37 @@
     }
 
     const top10 = list.slice(0, 10);
-    top10.forEach((u, idx) => {
-      const tr = document.createElement('tr');
-      let rankStyle = '';
-      if (idx === 0) rankStyle = 'rank-top1';
-      else if (idx === 1) rankStyle = 'rank-top2';
-      else if (idx === 2) rankStyle = 'rank-top3';
 
-      let scoreStr = '';
-      if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
-      else if (category === 'boss') scoreStr = `${u.bossFastestTime}초`;
-      else if (category === 'diligence') scoreStr = `${u.weeklySolved || 0}문제`;
-
-      tr.innerHTML = `
-        <td class="${rankStyle}"><strong>${idx + 1}위</strong></td>
-        <td>${getFullUserTitleString(u)}</td>
-        <td>${u.role === 'anon' ? '익명' : '학생'}</td>
-        <td><strong>${scoreStr}</strong></td>
+    if (top10.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
+            ✨ 아직 영웅의 전당에 등록된 도전자가 없습니다. 구구단 훈련을 마치고 첫 번째 영웅이 되어보세요!
+          </td>
+        </tr>
       `;
-      tbody.appendChild(tr);
-    });
+    } else {
+      top10.forEach((u, idx) => {
+        const tr = document.createElement('tr');
+        let rankStyle = '';
+        if (idx === 0) rankStyle = 'rank-top1';
+        else if (idx === 1) rankStyle = 'rank-top2';
+        else if (idx === 2) rankStyle = 'rank-top3';
+
+        let scoreStr = '';
+        if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
+        else if (category === 'boss') scoreStr = `${u.bossFastestTime}초`;
+        else if (category === 'diligence') scoreStr = `${u.weeklySolved || 0}문제`;
+
+        tr.innerHTML = `
+          <td class="${rankStyle}"><strong>${idx + 1}위</strong></td>
+          <td>${getFullUserTitleString(u)}</td>
+          <td>${u.role === 'anon' ? '익명' : '학생'}</td>
+          <td><strong>${scoreStr}</strong></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
     const myRankBanner = document.getElementById('myRankBanner');
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
@@ -992,16 +944,20 @@
       });
 
       const top10 = sorted.slice(0, 10);
-      top10.forEach((u, idx) => {
-        const count = (u.gameClears && u.gameClears[gameIdx]) || 0;
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${idx + 1}위</strong></td>
-          <td style="font-size: 0.85rem;">${getFullUserTitleString(u)}</td>
-          <td><strong>${count}회</strong></td>
-        `;
-        tbody.appendChild(tr);
-      });
+      if (top10.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:16px; color:var(--text-muted);">기록 없음</td></tr>`;
+      } else {
+        top10.forEach((u, idx) => {
+          const count = (u.gameClears && u.gameClears[gameIdx]) || 0;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><strong>${idx + 1}위</strong></td>
+            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)}</td>
+            <td><strong>${count}회</strong></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
 
       if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
         const myIdx = sorted.findIndex(u => u.id === currentUser.id);
@@ -1231,17 +1187,6 @@
     openModal('titleModal');
   }
 
-  function saveUserDataInList(user) {
-    if (!user || user.role === 'anon') return;
-    const idx = sampleClassStudents.findIndex(s => s.id === user.id);
-    if (idx >= 0) {
-      sampleClassStudents[idx] = user;
-    } else {
-      sampleClassStudents.push(user);
-    }
-    saveStorageData();
-  }
-
   // -------------------------------------------------------------------------
   // 11. Initializations & Persistent Session Startup
   // -------------------------------------------------------------------------
@@ -1306,14 +1251,12 @@
         return;
       }
 
-      const existingStudent = sampleClassStudents.find(
+      let studentUser = sampleClassStudents.find(
         s => s.name === name && s.grade === grade && s.classNum === classNum && s.inviteCode === invite
       );
 
-      if (existingStudent) {
-        currentUser = existingStudent;
-      } else {
-        currentUser = {
+      if (!studentUser) {
+        studentUser = {
           id: `std_${Date.now()}`,
           name: name,
           role: 'student',
@@ -1331,11 +1274,10 @@
           gameClears: [0, 0, 0],
           weakTableErrors: {}
         };
-        sampleClassStudents.push(currentUser);
-        saveStorageData();
       }
 
-      saveSessionUser(currentUser);
+      saveUserDataInList(studentUser);
+      saveSessionUser(studentUser);
       closeModal('loginModal');
       updateHeaderUI();
       showView('lobbyView');
@@ -1436,6 +1378,7 @@
         weakTableErrors: {}
       };
 
+      saveUserDataInList(anonUser);
       saveSessionUser(anonUser);
       closeModal('loginModal');
       updateHeaderUI();
