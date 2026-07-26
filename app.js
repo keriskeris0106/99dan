@@ -1,10 +1,8 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v15
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v16
    Fixes & Updates:
-   1. Strict 3-Way Student Login Check (Grade + ClassNum + Invite Code MUST match)
-   2. Displays Teacher's Custom Class Name next to Student Nickname
-   3. Removed default hardcoded '3학년 2반' initial preset
-   4. Real-time Student-to-Teacher Admin Data Synchronization (via storage event)
+   1. Privacy Protection: Simplified error alert without revealing Grade/Class info
+   2. Strict 3-Way Student Login Validation (Grade + Class + Invite Code)
    ========================================================================== */
 
 (function () {
@@ -168,14 +166,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v15', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v16', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v15');
+      localStorage.removeItem('gugudan_logged_user_v16');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v15');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v16');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -187,7 +185,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v15');
+    const saved = localStorage.getItem('gugudan_adventure_data_v16');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -214,7 +212,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v15', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v16', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
@@ -1186,7 +1184,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v15') {
+      if (e.key === 'gugudan_adventure_data_v16') {
         loadStorageData();
         if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
           renderTeacherAdminPage();
@@ -1232,7 +1230,7 @@
       });
     });
 
-    // Student Login Submit (Strict 3-Way Check: Grade + ClassNum + InviteCode)
+    // Student Login Submit (Privacy-Protected Strict 3-Way Check)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const grade = parseInt(document.getElementById('studentGradeSelect').value);
@@ -1254,14 +1252,13 @@
       let classInfo = registeredClasses[invite];
 
       if (!classInfo) {
-        alert(`⛔ 존재하지 않는 초대코드입니다.\n선생님께 안내받은 정확한 6자리 초대코드를 입력해주세요.`);
+        alert(`⛔ 입력하신 학년, 반, 또는 초대코드가 일치하지 않습니다. 다시 확인 후 입력해주세요.`);
         return;
       }
 
-      // Strict 3-Way Check: Grade + ClassNum + InviteCode MUST match Teacher Settings!
+      // Privacy Protection: Simplified Alert Message
       if (classInfo.grade !== grade || classInfo.classNum !== classNum) {
-        const teacherClassStr = classInfo.className || `${classInfo.grade}학년 ${classInfo.classNum}반`;
-        alert(`⛔ 학년/반 불일치!\n해당 초대코드(${invite})는 [${teacherClassStr}] 전용 코드입니다.\n입력하신 학년/반(${grade}학년 ${classNum}반)을 선생님의 학반 정보와 정확히 동일하게 선택해주세요.`);
+        alert(`⛔ 입력하신 학년, 반, 또는 초대코드가 일치하지 않습니다. 다시 확인 후 입력해주세요.`);
         return;
       }
 
@@ -1369,7 +1366,6 @@
         registeredTeachersMap[currentUser.email].className = displayClass;
       }
 
-      // Also update all existing students in this class with the new class alias!
       sampleClassStudents.forEach(s => {
         if (s.inviteCode === code) {
           s.grade = newGrade;
