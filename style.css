@@ -923,6 +923,43 @@ body.in-dungeon {
 .rank-top2 { color: #475569; font-weight: 800; }
 .rank-top3 { color: #B45309; font-weight: 800; }
 
+@keyframes goldSparkle {
+  0% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 4px #F59E0B); }
+  50% { transform: scale(1.18) rotate(8deg); filter: drop-shadow(0 0 12px #FBBF24); }
+  100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 4px #F59E0B); }
+}
+
+@keyframes silverShine {
+  0% { transform: scale(1); filter: drop-shadow(0 0 3px #94A3B8); }
+  50% { transform: scale(1.12) translateY(-1px); filter: drop-shadow(0 0 8px #CBD5E1); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 3px #94A3B8); }
+}
+
+@keyframes bronzeGlow {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px #D97706); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 6px #F59E0B); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px #D97706); }
+}
+
+.top-rank-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 1.1rem;
+  vertical-align: middle;
+}
+
+.top1-badge {
+  animation: goldSparkle 1.3s infinite ease-in-out;
+}
+
+.top2-badge {
+  animation: silverShine 1.5s infinite ease-in-out;
+}
+
+.top3-badge {
+  animation: bronzeGlow 1.7s infinite ease-in-out;
+}
+
 .rank-table tr.my-row-highlight, .mini-rank-table tr.my-row-highlight {
   background-color: rgba(124, 58, 237, 0.12) !important;
   border-left: 4px solid #7C3AED;

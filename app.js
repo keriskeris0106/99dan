@@ -109,7 +109,29 @@
     }
 
     playWrong() {
-      this.playTone(180, 'sine', 0.15, 0.1);
+      if (!this.enabled) return;
+      this.init();
+      if (!this.audioCtx) return;
+
+      try {
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        osc.type = 'sawtooth';
+        
+        osc.frequency.setValueAtTime(160, this.audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(65, this.audioCtx.currentTime + 0.25);
+
+        gain.gain.setValueAtTime(0.18, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.25);
+
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+
+        osc.start();
+        osc.stop(this.audioCtx.currentTime + 0.25);
+      } catch (e) {
+        console.warn('Audio error:', e);
+      }
     }
 
     playCombo(count) {
@@ -1046,9 +1068,17 @@
         }
 
         let rankStyle = '';
-        if (item.rankNum === 1) rankStyle = 'rank-top1';
-        else if (item.rankNum === 2) rankStyle = 'rank-top2';
-        else if (item.rankNum === 3) rankStyle = 'rank-top3';
+        let rankBadgeHtml = '';
+        if (item.rankNum === 1) {
+          rankStyle = 'rank-top1';
+          rankBadgeHtml = '<span class="top-rank-badge top1-badge" title="1위 금빛 전설">🥇✨</span>';
+        } else if (item.rankNum === 2) {
+          rankStyle = 'rank-top2';
+          rankBadgeHtml = '<span class="top-rank-badge top2-badge" title="2위 은빛 영웅">🥈✨</span>';
+        } else if (item.rankNum === 3) {
+          rankStyle = 'rank-top3';
+          rankBadgeHtml = '<span class="top-rank-badge top3-badge" title="3위 동빛 수호자">🥉✨</span>';
+        }
 
         let scoreStr = '';
         if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
@@ -1057,7 +1087,7 @@
 
         tr.innerHTML = `
           <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
-          <td>${getFullUserTitleString(u)} ${isMyRow ? '📍 (나)' : ''}</td>
+          <td>${getFullUserTitleString(u)} ${rankBadgeHtml} ${isMyRow ? '📍 (나)' : ''}</td>
           <td>${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
         `;
@@ -1097,29 +1127,38 @@
 
       const gameIdx = gameId - 1;
       const activeList = [...list].filter(u => (u.gameClears && u.gameClears[gameIdx] > 0));
+      
+      // Sort by clear count descending; if tied, tie-breaker by totalGold descending!
       activeList.sort((a, b) => {
         const aVal = (a.gameClears && a.gameClears[gameIdx]) || 0;
         const bVal = (b.gameClears && b.gameClears[gameIdx]) || 0;
-        return bVal - aVal;
+        if (bVal !== aVal) return bVal - aVal;
+        return (b.totalGold || 0) - (a.totalGold || 0);
       });
 
       const getClearVal = u => (u.gameClears && u.gameClears[gameIdx]) || 0;
       const rankedList = calculateJointRanks(activeList, getClearVal);
-      const top10Ranked = rankedList.filter(item => item.rankNum <= 10);
+      // Limit to Top 5 ranks as requested
+      const top5Ranked = rankedList.filter(item => item.rankNum <= 5);
 
-      if (top10Ranked.length === 0) {
+      if (top5Ranked.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:16px; color:var(--text-muted);">기록 없음</td></tr>`;
       } else {
-        top10Ranked.forEach((item) => {
+        top5Ranked.forEach((item) => {
           const u = item.user;
           const count = getClearVal(u);
           const tr = document.createElement('tr');
           const isMyRow = currentUser && (u.id === currentUser.id);
           if (isMyRow) tr.className = 'my-row-highlight';
 
+          let rankBadgeHtml = '';
+          if (item.rankNum === 1) rankBadgeHtml = '<span class="top-rank-badge top1-badge" title="1위 금빛">🥇✨</span>';
+          else if (item.rankNum === 2) rankBadgeHtml = '<span class="top-rank-badge top2-badge" title="2위 은빛">🥈✨</span>';
+          else if (item.rankNum === 3) rankBadgeHtml = '<span class="top-rank-badge top3-badge" title="3위 동빛">🥉✨</span>';
+
           tr.innerHTML = `
             <td><strong>${item.rankDisplay}</strong></td>
-            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${isMyRow ? '📍(나)' : ''}</td>
+            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${rankBadgeHtml} ${isMyRow ? '📍(나)' : ''}</td>
             <td><strong>${count}회</strong></td>
           `;
           tbody.appendChild(tr);
@@ -1131,7 +1170,7 @@
         const myRankValEl = document.getElementById(`myMiniRankVal${gameId}`);
         if (myCount > 0) {
           const myItem = rankedList.find(item => item.user.id === currentUser.id);
-          const rankStr = myItem ? myItem.rankDisplay : '11위 이하';
+          const rankStr = myItem ? (myItem.rankNum <= 5 ? myItem.rankDisplay : '6위 이하') : '6위 이하';
           myRankValEl.textContent = `${rankStr} (${myCount}회)`;
         } else {
           myRankValEl.textContent = `기록 없음 (0회)`;
