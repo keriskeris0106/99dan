@@ -1,11 +1,12 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v27
-   Ultimate Firebase Cloud Auth & Realtime Firestore Engine
-   Fixes & Enhancements:
-   1. Multiplication Tile Deselect (구구단 짝 맞추기): Clicking an already selected tile deselects it.
-   2. Seamless Firebase Auth Integration: Ensures every student, teacher, and anon user is Firebase Authenticated before Firestore read/write.
-   3. Teacher Class Code Sync: Guarantees 6-digit invite code is written to Firestore so students can log in from any device.
-   4. Live Hall of Heroes & Teacher Dashboard Sync: Firestore onSnapshot triggers instant UI updates worldwide.
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v28
+   Complete Refinement according to 13 User Design & Functional Specifications
+   Highlights:
+   1. Clean Audio Engine: Crystal clear, short chime for correct answers.
+   2. Joint Rank Calculation (공동 순위): Equal scores share joint ranks (e.g., 공동 1위).
+   3. Cumulative Gold Ranking (totalGold): Hall of Heroes sorts by total cumulative earned gold (spending 100g for boss does not reduce rank).
+   4. Live Student Class Name Sync: Renaming class updates all students' class names live everywhere.
+   5. Clean Teacher Dashboard & Hall of Heroes UI: Student name without extra brackets on Admin table, 0-clear filter for mini-games.
    ========================================================================== */
 
 (function () {
@@ -36,7 +37,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v27] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v28] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -58,7 +59,7 @@
     }
   }
 
-  // Web Audio Synthesizer
+  // Web Audio Synthesizer (Point 7: Crystal-Clear, Short, High-Quality Chime)
   class SoundEngine {
     constructor() {
       this.enabled = true;
@@ -77,7 +78,7 @@
       }
     }
 
-    playTone(freq, type = 'sine', duration = 0.15, gainVal = 0.1) {
+    playTone(freq, type = 'sine', duration = 0.08, gainVal = 0.08) {
       if (!this.enabled) return;
       this.init();
       if (!this.audioCtx) return;
@@ -87,7 +88,9 @@
         const gain = this.audioCtx.createGain();
         osc.type = type;
         osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
-        gain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime + duration);
+        
+        gain.gain.setValueAtTime(gainVal, this.audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + duration);
 
         osc.connect(gain);
         gain.connect(this.audioCtx.destination);
@@ -99,29 +102,29 @@
       }
     }
 
+    // Short, elegant chime for correct answers (Point 7)
     playCorrect() {
-      this.playTone(523.25, 'triangle', 0.1, 0.15); // C5
-      setTimeout(() => this.playTone(659.25, 'triangle', 0.15, 0.15), 100); // E5
-      setTimeout(() => this.playTone(783.99, 'triangle', 0.25, 0.2), 200); // G5
+      this.playTone(523.25, 'sine', 0.08, 0.08); // C5
+      setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.08), 60); // E5
     }
 
     playWrong() {
-      this.playTone(180, 'sawtooth', 0.25, 0.2);
+      this.playTone(180, 'sine', 0.15, 0.1);
     }
 
     playCombo(count) {
-      const baseFreq = 400 + Math.min(count, 15) * 40;
-      this.playTone(baseFreq, 'sine', 0.12, 0.15);
+      const baseFreq = 450 + Math.min(count, 15) * 30;
+      this.playTone(baseFreq, 'sine', 0.08, 0.08);
     }
 
     playHit() {
-      this.playTone(110, 'square', 0.2, 0.25);
+      this.playTone(120, 'sine', 0.12, 0.15);
     }
 
     playVictory() {
       const notes = [523.25, 659.25, 783.99, 1046.50];
       notes.forEach((freq, idx) => {
-        setTimeout(() => this.playTone(freq, 'triangle', 0.3, 0.2), idx * 120);
+        setTimeout(() => this.playTone(freq, 'sine', 0.2, 0.12), idx * 100);
       });
     }
   }
@@ -199,14 +202,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v27', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v28', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v27');
+      localStorage.removeItem('gugudan_logged_user_v28');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v27');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v28');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -218,7 +221,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v27');
+    const saved = localStorage.getItem('gugudan_adventure_data_v28');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -245,17 +248,17 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v27', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v28', JSON.stringify(payload));
     refreshAllLiveViews();
   }
 
-  // Cloud Firestore Database Sync Writer
+  // Cloud Firestore Sync Writer
   async function syncToFirestore(collectionName, docId, dataObj) {
     if (!db) return;
     try {
       await ensureFirebaseAuth();
       await db.collection(collectionName).doc(docId).set(dataObj, { merge: true });
-      console.log(`☁️ [Firestore Sync Success] ${collectionName}/${docId}`);
+      console.log(`☁️ [Firestore Sync] ${collectionName}/${docId} updated`);
     } catch (e) {
       console.warn(`Firestore sync warning:`, e);
     }
@@ -267,7 +270,7 @@
   function initFirestoreRealtimeListeners() {
     if (!db) return;
 
-    // 1. Listen for Teacher Classes across all devices
+    // 1. Listen for Classes across all devices
     db.collection('classes').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
@@ -275,11 +278,21 @@
         if (data.teacherEmail) {
           registeredTeachersMap[data.teacherEmail] = data;
         }
+
+        // Live update class names for all students registered under this invite code! (Point 11)
+        sampleClassStudents.forEach(s => {
+          if (s.inviteCode === doc.id && data.className) {
+            s.className = data.className;
+          }
+        });
+        if (currentUser && currentUser.inviteCode === doc.id && data.className) {
+          currentUser.className = data.className;
+        }
       });
       saveStorageData();
     }, err => console.warn("Firestore classes listener err:", err));
 
-    // 2. Listen for All Students across all devices globally (For Hall of Heroes & Teacher Dashboard)
+    // 2. Listen for All Students across all devices globally
     if (unsubscribeStudentsListener) unsubscribeStudentsListener();
     unsubscribeStudentsListener = db.collection('students').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
@@ -424,6 +437,12 @@
 
     document.getElementById('headerUserTitleEmoji').textContent = titleObj.emoji;
     document.getElementById('headerUserTitleName').textContent = titleObj.name;
+
+    // Check if Teacher updated class name live! (Point 11)
+    if (currentUser.role === 'student' && registeredClasses[currentUser.inviteCode]) {
+      currentUser.className = registeredClasses[currentUser.inviteCode].className || currentUser.className;
+    }
+
     document.getElementById('headerUserName').textContent = getStudentDisplayName(currentUser);
 
     const roleBadge = document.getElementById('headerUserRoleBadge');
@@ -640,12 +659,11 @@
 
   // Feature 1: Tile Click with Deselect Support (재클릭 시 선택 해제)
   function handleTileClick(btn, tile, question) {
-    // Check if clicking an already selected tile -> Deselect it!
     const existingIdx = gameState.tileSelection.findIndex(item => item.btn === btn);
     if (existingIdx >= 0) {
       btn.classList.remove('selected');
       gameState.tileSelection.splice(existingIdx, 1);
-      sound.playTone(320, 'sine', 0.08, 0.1);
+      sound.playTone(320, 'sine', 0.08, 0.08);
       return;
     }
 
@@ -923,7 +941,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 8. 영웅의 전당 (Hall of Heroes - Teachers 100% Excluded)
+  // 8. 영웅의 전당 (Hall of Heroes) - Joint Ranks (공동 순위) Support
   // -------------------------------------------------------------------------
 
   function renderHallOfHeroes(activeTab = 'gold') {
@@ -932,6 +950,13 @@
 
     const singleWrapper = document.getElementById('hallSingleWrapper');
     const tripleWrapper = document.getElementById('hallTripleWrapper');
+    const noticeBox = document.getElementById('diligenceNoticeBox');
+
+    if (activeTab === 'diligence') {
+      if (noticeBox) noticeBox.classList.remove('hidden');
+    } else {
+      if (noticeBox) noticeBox.classList.add('hidden');
+    }
 
     if (activeTab === 'minigames') {
       singleWrapper.classList.add('hidden');
@@ -956,6 +981,39 @@
     return list;
   }
 
+  // Calculate Joint Ranks (공동 순위) for tied scores (Points 8, 9)
+  function calculateJointRanks(sortedList, getScoreVal, isAscending = false) {
+    const result = [];
+    if (sortedList.length === 0) return result;
+
+    let currentRank = 1;
+    let prevScore = getScoreVal(sortedList[0]);
+    let sameScoreCount = 0;
+
+    sortedList.forEach((user, index) => {
+      const score = getScoreVal(user);
+      if (score === prevScore) {
+        sameScoreCount++;
+      } else {
+        currentRank = index + 1;
+        prevScore = score;
+        sameScoreCount = 1;
+      }
+
+      // Check if tied with others in the list
+      const tiedWithOthers = sortedList.filter(u => getScoreVal(u) === score).length > 1;
+
+      result.push({
+        user,
+        rankNum: currentRank,
+        isJoint: tiedWithOthers,
+        rankDisplay: tiedWithOthers ? `공동 ${currentRank}위` : `${currentRank}위`
+      });
+    });
+
+    return result;
+  }
+
   function renderSingleRankTable(category) {
     const tbody = document.getElementById('rankTableBody');
     const scoreHeader = document.getElementById('rankScoreHeader');
@@ -963,21 +1021,30 @@
 
     let list = getCombinedUserList();
 
+    let getScoreVal = u => 0;
+
     if (category === 'gold') {
       scoreHeader.textContent = '누적 골드';
+      // Point 13: Sort by cumulative totalGold (earned gold), NOT currentGold (wallet)
       list.sort((a, b) => (b.totalGold || 0) - (a.totalGold || 0));
+      getScoreVal = u => (u.totalGold || 0);
     } else if (category === 'boss') {
       scoreHeader.textContent = '최단 타임';
       list = list.filter(u => u.bossFastestTime !== null && u.bossFastestTime !== undefined);
       list.sort((a, b) => parseFloat(a.bossFastestTime) - parseFloat(b.bossFastestTime));
+      getScoreVal = u => parseFloat(u.bossFastestTime || 9999);
     } else if (category === 'diligence') {
       scoreHeader.textContent = '주간 푼 문제';
       list.sort((a, b) => (b.weeklySolved || 0) - (a.weeklySolved || 0));
+      getScoreVal = u => (u.weeklySolved || 0);
     }
 
-    const top10 = list.slice(0, 10);
+    const rankedList = calculateJointRanks(list, getScoreVal);
 
-    if (top10.length === 0) {
+    // Filter Top 10 rank positions
+    const top10Ranked = rankedList.filter(item => item.rankNum <= 10);
+
+    if (top10Ranked.length === 0) {
       tbody.innerHTML = `
         <tr>
           <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
@@ -986,12 +1053,13 @@
         </tr>
       `;
     } else {
-      top10.forEach((u, idx) => {
+      top10Ranked.forEach((item) => {
+        const u = item.user;
         const tr = document.createElement('tr');
         let rankStyle = '';
-        if (idx === 0) rankStyle = 'rank-top1';
-        else if (idx === 1) rankStyle = 'rank-top2';
-        else if (idx === 2) rankStyle = 'rank-top3';
+        if (item.rankNum === 1) rankStyle = 'rank-top1';
+        else if (item.rankNum === 2) rankStyle = 'rank-top2';
+        else if (item.rankNum === 3) rankStyle = 'rank-top3';
 
         let scoreStr = '';
         if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
@@ -999,7 +1067,7 @@
         else if (category === 'diligence') scoreStr = `${u.weeklySolved || 0}문제`;
 
         tr.innerHTML = `
-          <td class="${rankStyle}"><strong>${idx + 1}위</strong></td>
+          <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
           <td>${getFullUserTitleString(u)}</td>
           <td>${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
@@ -1010,9 +1078,9 @@
 
     const myRankBanner = document.getElementById('myRankBanner');
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
-      const myIndex = list.findIndex(u => u.id === currentUser.id);
-      if (myIndex >= 10) {
-        document.getElementById('myRankPos').textContent = `${myIndex + 1}위`;
+      const myItem = rankedList.find(item => item.user.id === currentUser.id);
+      if (myItem && myItem.rankNum > 10) {
+        document.getElementById('myRankPos').textContent = myItem.rankDisplay;
         document.getElementById('myRankUser').textContent = getFullUserTitleString(currentUser);
 
         let myScoreStr = '';
@@ -1038,21 +1106,28 @@
       tbody.innerHTML = '';
 
       const gameIdx = gameId - 1;
-      const sorted = [...list].sort((a, b) => {
+      
+      // Point 2: Filter out 0-clear players from Top 10 ranking list!
+      const activeList = [...list].filter(u => (u.gameClears && u.gameClears[gameIdx] > 0));
+      activeList.sort((a, b) => {
         const aVal = (a.gameClears && a.gameClears[gameIdx]) || 0;
         const bVal = (b.gameClears && b.gameClears[gameIdx]) || 0;
         return bVal - aVal;
       });
 
-      const top10 = sorted.slice(0, 10);
-      if (top10.length === 0) {
+      const getClearVal = u => (u.gameClears && u.gameClears[gameIdx]) || 0;
+      const rankedList = calculateJointRanks(activeList, getClearVal);
+      const top10Ranked = rankedList.filter(item => item.rankNum <= 10);
+
+      if (top10Ranked.length === 0) {
         tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:16px; color:var(--text-muted);">기록 없음</td></tr>`;
       } else {
-        top10.forEach((u, idx) => {
-          const count = (u.gameClears && u.gameClears[gameIdx]) || 0;
+        top10Ranked.forEach((item) => {
+          const u = item.user;
+          const count = getClearVal(u);
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td><strong>${idx + 1}위</strong></td>
+            <td><strong>${item.rankDisplay}</strong></td>
             <td style="font-size: 0.85rem;">${getFullUserTitleString(u)}</td>
             <td><strong>${count}회</strong></td>
           `;
@@ -1061,12 +1136,14 @@
       }
 
       if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
-        const myIdx = sorted.findIndex(u => u.id === currentUser.id);
-        const myCount = (currentUser.gameClears && currentUser.gameClears[gameIdx]) || 0;
+        const myCount = getClearVal(currentUser);
         const myRankValEl = document.getElementById(`myMiniRankVal${gameId}`);
-        if (myIdx >= 0) {
-          myRankValEl.textContent = `${myIdx + 1}위 (${myCount}회)`;
+        if (myCount > 0) {
+          const myItem = rankedList.find(item => item.user.id === currentUser.id);
+          const rankStr = myItem ? myItem.rankDisplay : '11위 이하';
+          myRankValEl.textContent = `${rankStr} (${myCount}회)`;
         } else {
+          // Point 2: Displays '기록 없음 (0회)' when user has 0 clears!
           myRankValEl.textContent = `기록 없음 (0회)`;
         }
       }
@@ -1194,10 +1271,11 @@
       return;
     }
 
+    // Point 1: Display ONLY student name (without extra class name in parentheses) on Teacher Admin Table!
     sortedStudents.forEach(std => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><strong>${getStudentDisplayName(std)}</strong></td>
+        <td><strong>${std.name}</strong></td>
         <td>🪙 ${std.totalGold || 0} Gold</td>
         <td>⭐ ${std.totalSolved || 0}문제</td>
         <td>⚔️ ${std.bossCount || 0}회</td>
@@ -1240,7 +1318,7 @@
   }
 
   function showWeakTableChartModal(student) {
-    document.getElementById('chartStudentName').textContent = getStudentDisplayName(student);
+    document.getElementById('chartStudentName').textContent = student.name;
     const container = document.getElementById('chartBarsContainer');
     container.innerHTML = '';
 
@@ -1319,12 +1397,12 @@
     loadStorageData();
     initFirestoreRealtimeListeners();
 
-    // Ensure Firebase Auth is active for zero-permission-error Firestore access
+    // Ensure Firebase Auth is active
     ensureFirebaseAuth();
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v27') {
+      if (e.key === 'gugudan_adventure_data_v28') {
         loadStorageData();
         refreshAllLiveViews();
       }
@@ -1368,7 +1446,7 @@
       });
     });
 
-    // Student Login Submit (Ensures Firebase Auth & Cloud Lookup)
+    // Student Login Submit
     document.getElementById('studentLoginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1376,7 +1454,7 @@
       const invite = rawInvite.replace(/\s+/g, '');
 
       if (!name) {
-        alert('학생 실명을 입력하세요.');
+        alert('학생 이름을 입력하세요.');
         return;
       }
 
@@ -1423,7 +1501,7 @@
         return;
       }
 
-      // Teacher Class Name (Guaranteed: Uses Teacher's configured className e.g. '3-6'!)
+      // Teacher Class Name
       const displayClassName = classInfo.className ? classInfo.className : '미설정';
       const studentDocKey = `${invite}_${encodeURIComponent(name)}`;
 
@@ -1496,7 +1574,7 @@
       closeModal('classConfigModal');
     });
 
-    // Submit Teacher Class Name Configuration (e.g. '3-6')
+    // Submit Teacher Class Name Configuration (e.g. '3-6') - Point 11: Live Sync to all students!
     document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
@@ -1527,14 +1605,21 @@
         registeredTeachersMap[currentUser.email].className = customName;
       }
 
-      // Sync updated teacher class to Firestore Cloud
+      // 1. Sync updated teacher class to Firestore Cloud
       await syncToFirestore('classes', code, classRecord);
 
-      // Update all existing students under this teacher class
+      // 2. Update ALL existing students under this teacher class to the new class name! (Point 11)
       sampleClassStudents.forEach(async (s) => {
         if (s.inviteCode === code) {
           s.className = customName;
           await syncToFirestore('students', s.id, s);
+        }
+      });
+
+      Object.values(allPlayersMap).forEach(async (p) => {
+        if (p.inviteCode === code) {
+          p.className = customName;
+          await syncToFirestore('students', p.id, p);
         }
       });
 
@@ -1545,7 +1630,7 @@
       renderTeacherAdminPage();
       updateHeaderUI();
 
-      alert(`✅ 클래스 이름이 [${customName}]로 저장되었습니다!`);
+      alert(`✅ 클래스 이름이 [${customName}]로 저장되었습니다!\n모든 등록 학생들의 클래스 이름이 즉시 변경되었습니다.`);
     });
 
     // Anon Login Click
