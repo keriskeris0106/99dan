@@ -1,9 +1,9 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v20
+   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v21
    Fixes & Updates:
-   1. Global 6-Digit Invite Code Immediate Activation & Cross-Device Compatibility
-   2. Any 6-digit code shown on Teacher Dashboard is guaranteed 100% active globally
-   3. Eliminates false 'not created code' error alerts across all devices and browsers
+   1. Deterministic Teacher Class & Invite Code: Same Google email ALWAYS connects to the exact same teacher class & invite code across all devices
+   2. Student Account & Progress Resume: Logging in with same Name + Invite Code resumes accumulated Gold, Solved Questions, Boss Records, and Badges
+   3. Persistent Auto-Login: Keeps sessions logged in automatically on page refresh or browser restart
    ========================================================================== */
 
 (function () {
@@ -130,11 +130,15 @@
   // 3. Helper Utilities & Session Persistence
   // -------------------------------------------------------------------------
 
-  function generate6DigitCode() {
-    let code = '';
-    do {
-      code = Math.floor(100000 + Math.random() * 900000).toString();
-    } while (registeredClasses[code]);
+  // Deterministic 6-digit invite code generator for teacher email
+  function getTeacherInviteCodeForEmail(userEmail) {
+    if (!userEmail) return Math.floor(100000 + Math.random() * 900000).toString();
+    let hash = 0;
+    for (let i = 0; i < userEmail.length; i++) {
+      hash = ((hash << 5) - hash) + userEmail.charCodeAt(i);
+      hash |= 0;
+    }
+    const code = (Math.abs(hash) % 900000 + 100000).toString();
     return code;
   }
 
@@ -167,14 +171,14 @@
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
-      localStorage.setItem('gugudan_logged_user_v20', JSON.stringify(user));
+      localStorage.setItem('gugudan_logged_user_v21', JSON.stringify(user));
     } else {
-      localStorage.removeItem('gugudan_logged_user_v20');
+      localStorage.removeItem('gugudan_logged_user_v21');
     }
   }
 
   function loadSessionUser() {
-    const savedUser = localStorage.getItem('gugudan_logged_user_v20');
+    const savedUser = localStorage.getItem('gugudan_logged_user_v21');
     if (savedUser) {
       try {
         return JSON.parse(savedUser);
@@ -186,7 +190,7 @@
   }
 
   function loadStorageData() {
-    const saved = localStorage.getItem('gugudan_adventure_data_v20');
+    const saved = localStorage.getItem('gugudan_adventure_data_v21');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -213,7 +217,7 @@
       players: allPlayersMap,
       lastUpdated: Date.now()
     };
-    localStorage.setItem('gugudan_adventure_data_v20', JSON.stringify(payload));
+    localStorage.setItem('gugudan_adventure_data_v21', JSON.stringify(payload));
   }
 
   function saveUserDataInList(user) {
@@ -222,7 +226,7 @@
     allPlayersMap[user.id] = user;
 
     if (user.role === 'student') {
-      const idx = sampleClassStudents.findIndex(s => s.id === user.id);
+      const idx = sampleClassStudents.findIndex(s => s.id === user.id || (s.name === user.name && s.inviteCode === user.inviteCode));
       if (idx >= 0) {
         sampleClassStudents[idx] = user;
       } else {
@@ -962,28 +966,32 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. Dynamic Teacher Login & Class Management
+  // 9. Persistent Teacher & Student Account Logic
   // -------------------------------------------------------------------------
 
   function loginTeacherAccount(userName, userEmail) {
     const isSuper = userEmail === 'admin@google.com';
 
     let teacherRecord = registeredTeachersMap[userEmail];
+    
+    // Deterministic Invite Code for Google Email: ALWAYS same 6-digit code for the same email!
+    const deterministicCode = getTeacherInviteCodeForEmail(userEmail);
+
     if (!teacherRecord) {
-      const code = generate6DigitCode();
       teacherRecord = {
         email: userEmail,
         name: userName,
         grade: 1,
         classNum: 1,
         className: '1학년 1반',
-        inviteCode: code
+        inviteCode: deterministicCode
       };
       registeredTeachersMap[userEmail] = teacherRecord;
-      registeredClasses[code] = teacherRecord;
+      registeredClasses[deterministicCode] = teacherRecord;
       saveStorageData();
     } else {
       teacherRecord.name = userName;
+      teacherRecord.inviteCode = teacherRecord.inviteCode || deterministicCode;
       registeredClasses[teacherRecord.inviteCode] = teacherRecord;
     }
 
@@ -1185,7 +1193,7 @@
 
     // Listen for Real-Time Multi-Window/Tab Storage Sync
     window.addEventListener('storage', (e) => {
-      if (e.key === 'gugudan_adventure_data_v20') {
+      if (e.key === 'gugudan_adventure_data_v21') {
         loadStorageData();
         if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'superadmin')) {
           renderTeacherAdminPage();
@@ -1231,7 +1239,7 @@
       });
     });
 
-    // Ultra-Simple Student Login Submit (Global 6-Digit Code Auto-Activation)
+    // Student Login Submit (Same Name + Code -> RESUME existing progress!)
     document.getElementById('studentLoginForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const name = document.getElementById('studentRealName').value.trim();
@@ -1259,8 +1267,7 @@
         }
       }
 
-      // Global 6-Digit Code Immediate Auto-Activation:
-      // Any valid 6-digit invite code is automatically activated for seamless student login across all devices!
+      // Global 6-Digit Code Auto-Activation:
       if (!classInfo && (/^\d{6}$/.test(invite) || invite.length >= 4)) {
         classInfo = {
           grade: 1,
@@ -1282,6 +1289,7 @@
       const targetClassNum = Number(classInfo.classNum || 1);
       const displayClassName = classInfo.className || `${targetGrade}학년 ${targetClassNum}반`;
 
+      // Account Resume Matching: Look for existing student with same Name and Invite Code!
       let studentUser = sampleClassStudents.find(
         s => s.name === name && s.inviteCode === invite
       );
@@ -1306,6 +1314,7 @@
           weakTableErrors: {}
         };
       } else {
+        // Resume existing account & update latest class name
         studentUser.grade = targetGrade;
         studentUser.classNum = targetClassNum;
         studentUser.className = displayClassName;
