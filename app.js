@@ -1672,7 +1672,7 @@
       renderSuperAdminTable();
     } else {
       roleText.textContent = '교사 (승인됨)';
-      superPanel.add('hidden');
+      superPanel.classList.add('hidden');
     }
 
     updateTeacherDashboardUI();
