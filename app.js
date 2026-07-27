@@ -193,6 +193,16 @@
     return res;
   }
 
+  function getTodayKSTDateString() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kst = new Date(utc + (9 * 3600000));
+    const yyyy = kst.getFullYear();
+    const mm = String(kst.getMonth() + 1).padStart(2, '0');
+    const dd = String(kst.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
   function getStudentDisplayName(user) {
     if (!user) return '익명';
     if (user.role === 'anon') {
@@ -722,8 +732,16 @@
       currentUser.currentGold = (currentUser.currentGold || 0) + gameState.earnedGold;
       currentUser.totalGold = (currentUser.totalGold || 0) + gameState.earnedGold;
 
-      const gameIdx = gameState.activeGame - 1;
+      const todayStr = getTodayKSTDateString();
+      if (currentUser.lastActiveDate !== todayStr) {
+        currentUser.lastActiveDate = todayStr;
+        currentUser.todayClears = [0, 0, 0];
+      }
+      if (!currentUser.todayClears) currentUser.todayClears = [0, 0, 0];
       if (!currentUser.gameClears) currentUser.gameClears = [0, 0, 0];
+
+      const gameIdx = gameState.activeGame - 1;
+      currentUser.todayClears[gameIdx] = (currentUser.todayClears[gameIdx] || 0) + 1;
       currentUser.gameClears[gameIdx] = (currentUser.gameClears[gameIdx] || 0) + 1;
 
       saveUserDataInList(currentUser);
@@ -1245,6 +1263,31 @@
     document.getElementById('teacherInviteCode').textContent = currentUser.inviteCode;
   }
 
+  async function removeStudentFromClass(studentId, studentName) {
+    if (!confirm(`[${studentName}] 학생을 내 학반에서 제거하시겠습니까?\n\n(학생의 게임 학습 이력은 유지되며, 학반 연동만 해제됩니다.)`)) {
+      return;
+    }
+
+    const std = sampleClassStudents.find(s => s.id === studentId);
+    if (std) {
+      std.inviteCode = '';
+      std.className = '미설정';
+      await syncToFirestore('students', std.id, std);
+    }
+
+    if (allPlayersMap[studentId]) {
+      allPlayersMap[studentId].inviteCode = '';
+      allPlayersMap[studentId].className = '미설정';
+      await syncToFirestore('students', studentId, allPlayersMap[studentId]);
+    }
+
+    sampleClassStudents = sampleClassStudents.filter(s => s.id !== studentId);
+
+    saveStorageData();
+    renderTeacherAdminPage();
+    alert(`✅ [${studentName}] 학생이 학반에서 제거되었습니다.`);
+  }
+
   function renderTeacherAdminPage() {
     if (!currentUser) return;
 
@@ -1278,7 +1321,7 @@
       const currentClassNameDisplay = currentUser.className || '미설정';
       tbody.innerHTML = `
         <tr>
-          <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">
             아직 내 학반(${currentClassNameDisplay}, 초대코드: ${currentUser.inviteCode})에 등록된 학생이 없습니다.
           </td>
         </tr>
@@ -1286,16 +1329,36 @@
       return;
     }
 
+    const todayStr = getTodayKSTDateString();
+
     sortedStudents.forEach(std => {
+      const todayClears = (std.lastActiveDate === todayStr && std.todayClears) ? std.todayClears : [0, 0, 0];
+      const totalClears = std.gameClears || [0, 0, 0];
+
+      const g1Str = `${todayClears[0] || 0} (${totalClears[0] || 0})`;
+      const g2Str = `${todayClears[1] || 0} (${totalClears[1] || 0})`;
+      const g3Str = `${todayClears[2] || 0} (${totalClears[2] || 0})`;
+
+      const bossCount = std.bossCount || 0;
+      const bossTimeStr = std.bossFastestTime ? `${std.bossFastestTime}초` : '-';
+      const bossDisplay = `${bossCount}회 (${bossTimeStr})`;
+
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${std.name}</strong></td>
         <td>🪙 ${std.totalGold || 0} Gold</td>
-        <td>⭐ ${std.totalSolved || 0}문제</td>
-        <td>⚔️ ${std.bossCount || 0}회</td>
+        <td><strong>${g1Str}</strong></td>
+        <td><strong>${g2Str}</strong></td>
+        <td><strong>${g3Str}</strong></td>
+        <td>⚔️ ${bossDisplay}</td>
         <td>
           <button type="button" class="btn btn-outline btn-sm view-chart-btn" data-id="${std.id}">
             📊 취약 단수 차트
+          </button>
+        </td>
+        <td>
+          <button type="button" class="btn btn-danger-soft btn-sm remove-student-btn" data-id="${std.id}" data-name="${std.name}">
+            🗑️ 제거
           </button>
         </td>
       `;
@@ -1307,6 +1370,14 @@
         const stdId = e.currentTarget.dataset.id;
         const student = sampleClassStudents.find(s => s.id === stdId);
         if (student) showWeakTableChartModal(student);
+      });
+    });
+
+    document.querySelectorAll('.remove-student-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const stdId = e.currentTarget.dataset.id;
+        const stdName = e.currentTarget.dataset.name;
+        removeStudentFromClass(stdId, stdName);
       });
     });
   }
