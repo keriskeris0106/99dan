@@ -203,6 +203,32 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  function getWeeklyResetKeyKST() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const kst = new Date(utc + (9 * 3600000));
+    
+    const day = kst.getDay(); // 0: Sun, 1: Mon, ..., 6: Sat
+    const diffToMonday = (day === 0 ? -6 : 1 - day);
+    
+    const monday = new Date(kst);
+    monday.setDate(kst.getDate() + diffToMonday);
+    
+    const yyyy = monday.getFullYear();
+    const mm = String(monday.getMonth() + 1).padStart(2, '0');
+    const dd = String(monday.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  function checkAndUpdateUserWeeklyReset(user) {
+    if (!user) return;
+    const currentWeeklyKey = getWeeklyResetKeyKST();
+    if (user.lastWeeklyResetKey !== currentWeeklyKey) {
+      user.weeklySolved = 0;
+      user.lastWeeklyResetKey = currentWeeklyKey;
+    }
+  }
+
   function getStudentDisplayName(user) {
     if (!user) return '익명';
     if (user.role === 'anon') {
@@ -655,6 +681,7 @@
       }
 
       if (currentUser && gameState.currentQuestion) {
+        checkAndUpdateUserWeeklyReset(currentUser);
         currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
         currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
       }
@@ -702,6 +729,7 @@
         }
 
         if (currentUser) {
+          checkAndUpdateUserWeeklyReset(currentUser);
           currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
           currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
         }
@@ -904,6 +932,7 @@
       triggerFloatingDamage(`💥 -1 HP`);
 
       if (currentUser) {
+        checkAndUpdateUserWeeklyReset(currentUser);
         currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
         currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
       }
@@ -1002,6 +1031,8 @@
         list.push(currentUser);
       }
     }
+
+    list.forEach(u => checkAndUpdateUserWeeklyReset(u));
     return list;
   }
 
