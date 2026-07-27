@@ -1,16 +1,15 @@
 /* ==========================================================================
-   구구단 & 나눗셈 어드벤처 (Gugudan & Division Adventure) - Core Engine v35
+   구구단 & 나눗셈 어드벤처 (Gugudan & Division Adventure) - Core Engine v36
    Dual Mode Architecture Engine
-   Features & Guarantees:
-   1. 100% Backward Compatibility: Preserves all existing Gugudan data & progress.
-   2. Mode Switcher (구구단 vs 나눗셈): Seamless switching between modes on header tabs.
-   3. Division Adventure Mechanics:
-      - Game 1 (스피드 레이스): 12 ÷ 3 = ?
-      - Game 2 (숫자 탐정 1): 12 ÷ ? = 4
-      - Game 3 (숫자 탐정 2): ? ÷ 3 = 4
-      - Boss Dungeon: Game 1 style 10 consecutive division problems.
-   4. Independent Progress Tracking: Gold, clears, titles, boss records, and rankings tracked per mode.
-   5. Integrated Teacher Admin Dashboard: Teacher can switch modes to inspect students' Gugudan & Division reports under the same 6-digit class code.
+   Fixes & Refinements:
+   1. Distinct Division Game Names:
+      - Game 1: 나눗셈 스피드 레이스 (12 ÷ 3 = ?)
+      - Game 2: 나눗셈 나누는 수 탐정 (12 ÷ ? = 4)
+      - Game 3: 나눗셈 나누어지는 수 탐정 (? ÷ 3 = 4)
+      Reflected dynamically in Teacher Admin Table headers!
+   2. Mode Switcher for All User Roles: Student, Anon, and Teacher logins seamlessly toggle modes.
+   3. Division Boss Dungeon Problem Fix: Guaranteed 10 division problems (12 ÷ 3 = ?) in Division Boss.
+   4. Teacher Account Free Dungeon Entrance: Teacher logins enter Boss Dungeon with 0 gold deduction!
    ========================================================================== */
 
 (function () {
@@ -55,7 +54,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v35 Dual-Mode] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v36 Dual-Mode] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -572,6 +571,10 @@
     if (logoIcon) logoIcon.textContent = mode === 'division' ? '➗' : '⚔️';
     if (logoText) logoText.textContent = mode === 'division' ? '나눗셈 어드벤처' : '구구단 어드벤처';
 
+    if (currentUser) {
+      getUserModeData(currentUser, currentMode);
+    }
+
     refreshAllLiveViews();
   }
 
@@ -595,7 +598,7 @@
     // Game Card 2
     const card2 = document.getElementById('cardGame2');
     if (card2) {
-      card2.querySelector('.game-name').textContent = isDiv ? '나눗셈 숫자 탐정 1' : '구구단 숫자 탐정';
+      card2.querySelector('.game-name').textContent = isDiv ? '나눗셈 나누는 수 탐정' : '구구단 숫자 탐정';
       card2.querySelector('.game-formula-example').innerHTML = isDiv ? '설명: <code>12 ÷ ? = 4</code>' : '설명: <code>? x 3 = 6</code>';
       card2.querySelector('.game-desc').textContent = isDiv ? '나누는 빈칸에 들어갈 숫자를 찾아내는 숫자 탐정이 되어보세요!' : '곱해지는 빈칸에 들어갈 숫자를 찾아내는 숫자 탐정이 되어보세요!';
     }
@@ -603,7 +606,7 @@
     // Game Card 3
     const card3 = document.getElementById('cardGame3');
     if (card3) {
-      card3.querySelector('.game-name').textContent = isDiv ? '나눗셈 숫자 탐정 2' : '구구단 짝 맞추기';
+      card3.querySelector('.game-name').textContent = isDiv ? '나눗셈 나누어지는 수 탐정' : '구구단 짝 맞추기';
       card3.querySelector('.game-formula-example').innerHTML = isDiv ? '설명: <code>? ÷ 3 = 4</code>' : '설명: <code>? x ? = 6</code>';
       card3.querySelector('.game-desc').textContent = isDiv ? '나누어지는 빈칸에 들어갈 숫자를 빠르게 맞혀보세요!' : '결과값 곱이 제시되면, 곱해서 해당 숫자가 되는 두 수 조각을 연속 클릭하세요!';
     }
@@ -629,8 +632,8 @@
     const col3 = document.querySelector('#miniRankBody3')?.closest('.mini-rank-column')?.querySelector('.column-title');
 
     if (col1) col1.textContent = isDiv ? '🎯 나눗셈 스피드 레이스' : '🎯 구구단 스피드 레이스';
-    if (col2) col2.textContent = isDiv ? '🔍 나눗셈 숫자 탐정 1' : '🔍 구구단 숫자 탐정';
-    if (col3) col3.textContent = isDiv ? '🧩 나눗셈 숫자 탐정 2' : '🧩 구구단 짝 맞추기';
+    if (col2) col2.textContent = isDiv ? '🔍 나눗셈 나누는 수 탐정' : '🔍 구구단 숫자 탐정';
+    if (col3) col3.textContent = isDiv ? '🧩 나눗셈 나누어지는 수 탐정' : '🧩 구구단 짝 맞추기';
   }
 
   // -------------------------------------------------------------------------
@@ -863,8 +866,8 @@
     if (mode === 'division') {
       return {
         1: { title: '나눗셈 스피드 레이스', icon: '🎯' },
-        2: { title: '나눗셈 숫자 탐정 1', icon: '🔍' },
-        3: { title: '나눗셈 숫자 탐정 2', icon: '🧩' }
+        2: { title: '나눗셈 나누는 수 탐정', icon: '🔍' },
+        3: { title: '나눗셈 나누어지는 수 탐정', icon: '🧩' }
       }[gameType];
     } else {
       return {
@@ -1096,6 +1099,14 @@
   function requestBossEntry() {
     if (!currentUser) return;
 
+    const isTeacher = (currentUser.role === 'teacher' || currentUser.role === 'superadmin');
+
+    if (isTeacher) {
+      // Teacher logins enter Boss Dungeon freely with NO 100 gold requirement or deduction!
+      startBossBattle();
+      return;
+    }
+
     const mData = getUserModeData(currentUser, currentMode);
     const gold = mData.currentGold || 0;
     const body = document.getElementById('bossConfirmBody');
@@ -1176,7 +1187,11 @@
 
     gameState.bossProblems = [];
     for (let i = 0; i < 10; i++) {
-      gameState.bossProblems.push(generateQuestion(1));
+      if (currentMode === 'division') {
+        gameState.bossProblems.push(generateDivisionQuestion('boss'));
+      } else {
+        gameState.bossProblems.push(generateGugudanQuestion('boss'));
+      }
     }
 
     showView('bossPlayView');
@@ -1657,10 +1672,25 @@
       renderSuperAdminTable();
     } else {
       roleText.textContent = '교사 (승인됨)';
-      superPanel.classList.add('hidden');
+      superPanel.add('hidden');
     }
 
     updateTeacherDashboardUI();
+
+    // Update Table Headers dynamically based on active mode
+    const thG1 = document.getElementById('thGame1');
+    const thG2 = document.getElementById('thGame2');
+    const thG3 = document.getElementById('thGame3');
+
+    if (currentMode === 'division') {
+      if (thG1) thG1.innerHTML = '🎯 스피드<br><small>오늘 (전체)</small>';
+      if (thG2) thG2.innerHTML = '🔍 나누는수<br><small>오늘 (전체)</small>';
+      if (thG3) thG3.innerHTML = '🧩 나누어지는수<br><small>오늘 (전체)</small>';
+    } else {
+      if (thG1) thG1.innerHTML = '🎯 스피드<br><small>오늘 (전체)</small>';
+      if (thG2) thG2.innerHTML = '🔍 탐정<br><small>오늘 (전체)</small>';
+      if (thG3) thG3.innerHTML = '🧩 짝맞추기<br><small>오늘 (전체)</small>';
+    }
 
     let matchingStudents = sampleClassStudents;
     if (currentUser.role === 'teacher') {
