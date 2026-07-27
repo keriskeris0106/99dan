@@ -1100,20 +1100,13 @@
     if (!currentUser) return;
 
     const isTeacher = (currentUser.role === 'teacher' || currentUser.role === 'superadmin');
-
-    if (isTeacher) {
-      // Teacher logins enter Boss Dungeon freely with NO 100 gold requirement or deduction!
-      startBossBattle();
-      return;
-    }
-
     const mData = getUserModeData(currentUser, currentMode);
     const gold = mData.currentGold || 0;
     const body = document.getElementById('bossConfirmBody');
     const actions = document.getElementById('bossConfirmActions');
     const bossName = (currentMode === 'division') ? '나눗셈 마왕' : '구구단 마왕';
 
-    if (gold < BOSS_ENTRY_GOLD) {
+    if (!isTeacher && gold < BOSS_ENTRY_GOLD) {
       const diff = BOSS_ENTRY_GOLD - gold;
       body.innerHTML = `
         <div style="color: #EF4444; font-size: 1.15rem; font-weight: 800; margin-bottom: 12px;">
@@ -1136,6 +1129,9 @@
         closeModal('bossConfirmModal');
       });
     } else {
+      const conditionText = isTeacher ? '교사 무료 입장 (골드 소모 없음)' : `${BOSS_ENTRY_GOLD} 골드 소모`;
+      const subNoticeText = isTeacher ? '(교사 계정은 골드가 차감되지 않습니다)' : `(확인 클릭 시 즉시 ${BOSS_ENTRY_GOLD} 골드가 소모되며 환불되지 않습니다)`;
+
       body.innerHTML = `
         <div style="background-color: var(--bg-elevated); padding: 16px; border-radius: var(--radius-md); text-align: left; margin-bottom: 16px; border: 1px solid var(--border-color);">
           <h3 style="color: var(--accent-purple); margin-bottom: 6px;">👹 ${bossName} 던전</h3>
@@ -1143,7 +1139,7 @@
             <strong>설명:</strong> 10개의 ${currentMode === 'division' ? '나눗셈' : '구구단'} 문제를 해결하여 마왕을 봉인하고, 최단 신기록을 달성하세요.
           </p>
           <div style="font-size: 0.95rem; color: #DC2626; font-weight: 800; margin-bottom: 6px;">
-            ⚔️ 도전조건: ${BOSS_ENTRY_GOLD} 골드 소모
+            ⚔️ 도전조건: ${conditionText}
           </div>
           <div style="font-size: 0.85rem; color: var(--text-muted);">
             ✨ 10문제를 모두 풀면 마왕 봉인 완료! 봉인에 걸린 시간이 영웅의 전당 왕좌에 등록됩니다.
@@ -1151,13 +1147,13 @@
         </div>
         <p style="font-size: 1.1rem; font-weight: 800; color: var(--accent-purple);">
           던전에 입장하시겠습니까?<br>
-          <small style="font-weight: 400; color: #DC2626;">(확인 클릭 시 즉시 ${BOSS_ENTRY_GOLD} 골드가 소모되며 환불되지 않습니다)</small>
+          <small style="font-weight: 400; color: #DC2626;">${subNoticeText}</small>
         </p>
       `;
 
       actions.innerHTML = `
         <button type="button" class="btn btn-outline" id="bossCancelBtn">취소</button>
-        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn" style="line-height: 1.35;">🔥 네, 던전에<br>입장합니다</button>
+        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn" style="line-height: 1.35;">네,<br>던전에 입장합니다.</button>
       `;
       openModal('bossConfirmModal');
 
@@ -1167,12 +1163,13 @@
 
       document.getElementById('bossRealEnterBtn').addEventListener('click', () => {
         closeModal('bossConfirmModal');
-        mData.currentGold -= BOSS_ENTRY_GOLD;
-        mData.bossCount = (mData.bossCount || 0) + 1;
-        saveUserDataInList(currentUser);
-        saveSessionUser(currentUser);
-        updateHeaderUI();
-
+        if (!isTeacher) {
+          mData.currentGold -= BOSS_ENTRY_GOLD;
+          mData.bossCount = (mData.bossCount || 0) + 1;
+          saveUserDataInList(currentUser);
+          saveSessionUser(currentUser);
+          updateHeaderUI();
+        }
         startBossBattle();
       });
     }
