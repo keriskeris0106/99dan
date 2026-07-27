@@ -1,12 +1,16 @@
 /* ==========================================================================
-   구구단 어드벤처 (Multiplication Adventure) - Core JavaScript Engine v34
-   Enhanced Hall of Heroes & Teacher Settings Update Engine
-   Fixes & Guarantees:
-   1. Exclude 0-score players: Gold & Weekly Diligence rankings filter out 0-value users.
-   2. Highlight Student's Own Rank Row: Highlighting with text-glow in Hall of Heroes.
-   3. Below-Top-10 Rank Banner: Displays current user's rank & gold if outside Top 10.
-   4. Editable Teacher Nickname: Teacher can change nickname in Class Settings Modal.
-   5. Strict 6-Digit Numeric Restrictions & Real-time Red Code Warning: Restricts non-digits & alerts if code is already registered.
+   구구단 & 나눗셈 어드벤처 (Gugudan & Division Adventure) - Core Engine v35
+   Dual Mode Architecture Engine
+   Features & Guarantees:
+   1. 100% Backward Compatibility: Preserves all existing Gugudan data & progress.
+   2. Mode Switcher (구구단 vs 나눗셈): Seamless switching between modes on header tabs.
+   3. Division Adventure Mechanics:
+      - Game 1 (스피드 레이스): 12 ÷ 3 = ?
+      - Game 2 (숫자 탐정 1): 12 ÷ ? = 4
+      - Game 3 (숫자 탐정 2): ? ÷ 3 = 4
+      - Boss Dungeon: Game 1 style 10 consecutive division problems.
+   4. Independent Progress Tracking: Gold, clears, titles, boss records, and rankings tracked per mode.
+   5. Integrated Teacher Admin Dashboard: Teacher can switch modes to inspect students' Gugudan & Division reports under the same 6-digit class code.
    ========================================================================== */
 
 (function () {
@@ -16,14 +20,26 @@
   // 1. Data Models & Constants
   // -------------------------------------------------------------------------
 
-  const TITLES = [
-    { level: 0, emoji: '🐣', name: '구구단 수련생', reqDesc: '기본 부여', reqCount: 0 },
-    { level: 1, emoji: '⚡', name: '구구단 도전사', reqDesc: '보스전 10회 도전', reqCount: 10 },
-    { level: 2, emoji: '🔥', name: '구구단 탐험가', reqDesc: '보스전 30회 도전', reqCount: 30 },
-    { level: 3, emoji: '🛡️', name: '구구단 수호자', reqDesc: '보스전 50회 도전', reqCount: 50 },
-    { level: 4, emoji: '⚔️', name: '구구단 기사단', reqDesc: '보스전 80회 도전', reqCount: 80 },
-    { level: 5, emoji: '👑', name: '구구단 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
-  ];
+  let currentMode = 'gugudan'; // 'gugudan' | 'division'
+
+  const TITLES_MAP = {
+    gugudan: [
+      { level: 0, emoji: '🐣', name: '구구단 수련생', reqDesc: '기본 부여', reqCount: 0 },
+      { level: 1, emoji: '⚡', name: '구구단 도전사', reqDesc: '보스전 10회 도전', reqCount: 10 },
+      { level: 2, emoji: '🔥', name: '구구단 탐험가', reqDesc: '보스전 30회 도전', reqCount: 30 },
+      { level: 3, emoji: '🛡️', name: '구구단 수호자', reqDesc: '보스전 50회 도전', reqCount: 50 },
+      { level: 4, emoji: '⚔️', name: '구구단 기사단', reqDesc: '보스전 80회 도전', reqCount: 80 },
+      { level: 5, emoji: '👑', name: '구구단 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
+    ],
+    division: [
+      { level: 0, emoji: '🐣', name: '나눗셈 수련생', reqDesc: '기본 부여', reqCount: 0 },
+      { level: 1, emoji: '⚡', name: '나눗셈 도전사', reqDesc: '보스전 10회 도전', reqCount: 10 },
+      { level: 2, emoji: '🔥', name: '나눗셈 탐험가', reqDesc: '보스전 30회 도전', reqCount: 30 },
+      { level: 3, emoji: '🛡️', name: '나눗셈 수호자', reqDesc: '보스전 50회 도전', reqCount: 50 },
+      { level: 4, emoji: '➗', name: '나눗셈 기사단', reqDesc: '보스전 80회 도전', reqCount: 80 },
+      { level: 5, emoji: '👑', name: '나눗셈 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
+    ]
+  };
 
   const BOSS_ENTRY_GOLD = 100;
   const REWARD_GOLD_PER_PROBLEM = 1;
@@ -31,6 +47,7 @@
   let registeredClasses = {};
   let registeredTeachersMap = {};
   let allPlayersMap = {};
+  let sampleClassStudents = [];
   let isLoggingInProgress = false;
 
   // Firebase Firestore Reference
@@ -38,7 +55,7 @@
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       db = firebase.firestore();
-      console.log("🔥 [Firestore Engine v34] Cloud Database connected!");
+      console.log("🔥 [Firestore Engine v35 Dual-Mode] Cloud Database connected!");
     } catch (e) {
       console.warn("Firestore connection warning:", e);
     }
@@ -154,11 +171,10 @@
   const sound = new SoundEngine();
 
   // -------------------------------------------------------------------------
-  // 2. Application State Management
+  // 2. Application State Management & Dual Mode Data Accessor
   // -------------------------------------------------------------------------
   
   let currentUser = null;
-  let sampleClassStudents = [];
   let navigationHistory = ['lobbyView'];
 
   let gameState = {
@@ -180,19 +196,112 @@
     tileSelection: []
   };
 
-  // -------------------------------------------------------------------------
-  // 3. Helper Utilities & Session Persistence
-  // -------------------------------------------------------------------------
-
-  function generateRandomAnonCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let res = '';
-    for (let i = 0; i < 4; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length));
+  // Dual-Mode User Data Accessor Helper with 100% Backward Compatibility
+  function getUserModeData(user, mode = currentMode) {
+    if (!user) {
+      return {
+        currentGold: 0,
+        totalGold: 0,
+        totalSolved: 0,
+        weeklySolved: 0,
+        bossCount: 0,
+        bossFastestTime: null,
+        gameClears: [0, 0, 0],
+        todayClears: [0, 0, 0],
+        lastActiveDate: '',
+        weakTableErrors: {},
+        titleIndex: 0,
+        lastWeeklyResetKey: ''
+      };
     }
-    return res;
+
+    if (!user.modeData) {
+      user.modeData = {
+        gugudan: {
+          currentGold: user.currentGold !== undefined ? user.currentGold : 0,
+          totalGold: user.totalGold !== undefined ? user.totalGold : 0,
+          totalSolved: user.totalSolved !== undefined ? user.totalSolved : 0,
+          weeklySolved: user.weeklySolved !== undefined ? user.weeklySolved : 0,
+          bossCount: user.bossCount !== undefined ? user.bossCount : 0,
+          bossFastestTime: user.bossFastestTime !== undefined ? user.bossFastestTime : null,
+          gameClears: user.gameClears || [0, 0, 0],
+          todayClears: user.todayClears || [0, 0, 0],
+          lastActiveDate: user.lastActiveDate || '',
+          weakTableErrors: user.weakTableErrors || {},
+          titleIndex: user.titleIndex || 0,
+          lastWeeklyResetKey: user.lastWeeklyResetKey || ''
+        },
+        division: {
+          currentGold: 0,
+          totalGold: 0,
+          totalSolved: 0,
+          weeklySolved: 0,
+          bossCount: 0,
+          bossFastestTime: null,
+          gameClears: [0, 0, 0],
+          todayClears: [0, 0, 0],
+          lastActiveDate: '',
+          weakTableErrors: {},
+          titleIndex: 0,
+          lastWeeklyResetKey: ''
+        }
+      };
+    }
+
+    if (!user.modeData.gugudan) {
+      user.modeData.gugudan = {
+        currentGold: user.currentGold !== undefined ? user.currentGold : 0,
+        totalGold: user.totalGold !== undefined ? user.totalGold : 0,
+        totalSolved: user.totalSolved !== undefined ? user.totalSolved : 0,
+        weeklySolved: user.weeklySolved !== undefined ? user.weeklySolved : 0,
+        bossCount: user.bossCount !== undefined ? user.bossCount : 0,
+        bossFastestTime: user.bossFastestTime !== undefined ? user.bossFastestTime : null,
+        gameClears: user.gameClears || [0, 0, 0],
+        todayClears: user.todayClears || [0, 0, 0],
+        lastActiveDate: user.lastActiveDate || '',
+        weakTableErrors: user.weakTableErrors || {},
+        titleIndex: user.titleIndex || 0,
+        lastWeeklyResetKey: user.lastWeeklyResetKey || ''
+      };
+    }
+
+    if (!user.modeData.division) {
+      user.modeData.division = {
+        currentGold: 0,
+        totalGold: 0,
+        totalSolved: 0,
+        weeklySolved: 0,
+        bossCount: 0,
+        bossFastestTime: null,
+        gameClears: [0, 0, 0],
+        todayClears: [0, 0, 0],
+        lastActiveDate: '',
+        weakTableErrors: {},
+        titleIndex: 0,
+        lastWeeklyResetKey: ''
+      };
+    }
+
+    const modeObj = user.modeData[mode];
+
+    // Mirror active mode fields to root properties for backward compatibility
+    user.currentGold = modeObj.currentGold;
+    user.totalGold = modeObj.totalGold;
+    user.totalSolved = modeObj.totalSolved;
+    user.weeklySolved = modeObj.weeklySolved;
+    user.bossCount = modeObj.bossCount;
+    user.bossFastestTime = modeObj.bossFastestTime;
+    user.gameClears = modeObj.gameClears;
+    user.todayClears = modeObj.todayClears;
+    user.lastActiveDate = modeObj.lastActiveDate;
+    user.weakTableErrors = modeObj.weakTableErrors;
+    user.titleIndex = modeObj.titleIndex;
+    user.lastWeeklyResetKey = modeObj.lastWeeklyResetKey;
+
+    return modeObj;
   }
 
+  // KST Date Helpers
   function getTodayKSTDateString() {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -220,13 +329,23 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
-  function checkAndUpdateUserWeeklyReset(user) {
+  function checkAndUpdateUserWeeklyReset(user, mode = currentMode) {
     if (!user) return;
+    const mData = getUserModeData(user, mode);
     const currentWeeklyKey = getWeeklyResetKeyKST();
-    if (user.lastWeeklyResetKey !== currentWeeklyKey) {
-      user.weeklySolved = 0;
-      user.lastWeeklyResetKey = currentWeeklyKey;
+    if (mData.lastWeeklyResetKey !== currentWeeklyKey) {
+      mData.weeklySolved = 0;
+      mData.lastWeeklyResetKey = currentWeeklyKey;
     }
+  }
+
+  function generateRandomAnonCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let res = '';
+    for (let i = 0; i < 4; i++) {
+      res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return res;
   }
 
   function getStudentDisplayName(user) {
@@ -241,14 +360,19 @@
     return user.name;
   }
 
-  function getFullUserTitleString(user) {
-    const titleObj = TITLES[user.titleIndex || 0] || TITLES[0];
+  function getFullUserTitleString(user, mode = currentMode) {
+    const mData = getUserModeData(user, mode);
+    const titlesList = TITLES_MAP[mode] || TITLES_MAP.gugudan;
+    const titleObj = titlesList[mData.titleIndex || 0] || titlesList[0];
     return `${titleObj.emoji} ${getStudentDisplayName(user)}`;
   }
 
   function saveSessionUser(user) {
     currentUser = user;
     if (user) {
+      if (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
+        getUserModeData(currentUser, currentMode);
+      }
       localStorage.setItem('gugudan_logged_user_v34', JSON.stringify(user));
     } else {
       localStorage.removeItem('gugudan_logged_user_v34');
@@ -259,7 +383,11 @@
     const savedUser = localStorage.getItem('gugudan_logged_user_v34');
     if (savedUser) {
       try {
-        return JSON.parse(savedUser);
+        const u = JSON.parse(savedUser);
+        if (u && u.role !== 'teacher' && u.role !== 'superadmin') {
+          getUserModeData(u, currentMode);
+        }
+        return u;
       } catch (e) {
         console.error('Session user parse error:', e);
       }
@@ -285,6 +413,10 @@
     if (!allPlayersMap) allPlayersMap = {};
     if (!registeredClasses) registeredClasses = {};
     if (!registeredTeachersMap) registeredTeachersMap = {};
+
+    // Initialize modeData for all loaded students
+    sampleClassStudents.forEach(s => getUserModeData(s, currentMode));
+    Object.values(allPlayersMap).forEach(p => getUserModeData(p, currentMode));
   }
 
   function saveStorageData() {
@@ -317,13 +449,11 @@
   function initFirestoreRealtimeListeners() {
     if (!db) return;
 
-    // 1. Listen for Classes across all devices
     db.collection('classes').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
         registeredClasses[doc.id] = data;
 
-        // Live update class names for all students registered under this invite code!
         sampleClassStudents.forEach(s => {
           if (s.inviteCode === doc.id && data.className) {
             s.className = data.className;
@@ -336,11 +466,11 @@
       saveStorageData();
     }, err => console.warn("Firestore classes listener err:", err));
 
-    // 2. Listen for All Students across all devices globally
     if (unsubscribeStudentsListener) unsubscribeStudentsListener();
     unsubscribeStudentsListener = db.collection('students').onSnapshot((snapshot) => {
       snapshot.forEach(doc => {
         const data = doc.data();
+        getUserModeData(data, currentMode);
         allPlayersMap[data.id] = data;
 
         const idx = sampleClassStudents.findIndex(s => s.id === data.id || (s.name === data.name && s.inviteCode === data.inviteCode));
@@ -357,6 +487,7 @@
   async function saveUserDataInList(user) {
     if (!user || user.role === 'teacher' || user.role === 'superadmin') return;
 
+    getUserModeData(user, currentMode);
     allPlayersMap[user.id] = user;
 
     if (user.role === 'student') {
@@ -388,18 +519,23 @@
       const activeTab = activeTabEl ? activeTabEl.dataset.tab : 'gold';
       renderHallOfHeroes(activeTab);
     }
+
+    updateLobbyContentByMode();
   }
 
-  function updateUserTitleIndex(user) {
-    if (!user) return;
+  function updateUserTitleIndex(user, mode = currentMode) {
+    if (!user || user.role === 'teacher' || user.role === 'superadmin') return;
+    const mData = getUserModeData(user, mode);
+    const titlesList = TITLES_MAP[mode] || TITLES_MAP.gugudan;
     let newIndex = 0;
-    const bCount = user.bossCount || 0;
-    for (let i = TITLES.length - 1; i >= 0; i--) {
-      if (bCount >= TITLES[i].reqCount) {
+    const bCount = mData.bossCount || 0;
+    for (let i = titlesList.length - 1; i >= 0; i--) {
+      if (bCount >= titlesList[i].reqCount) {
         newIndex = i;
         break;
       }
     }
+    mData.titleIndex = newIndex;
     user.titleIndex = newIndex;
   }
 
@@ -416,6 +552,85 @@
     if (modal) {
       modal.classList.remove('active');
     }
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Mode Switcher (구구단 vs 나눗셈) Implementation
+  // -------------------------------------------------------------------------
+
+  function setMode(mode) {
+    currentMode = mode;
+
+    document.querySelectorAll('.mode-tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    document.body.classList.toggle('mode-division', mode === 'division');
+
+    const logoIcon = document.getElementById('headerLogoIcon');
+    const logoText = document.getElementById('headerLogoText');
+    if (logoIcon) logoIcon.textContent = mode === 'division' ? '➗' : '⚔️';
+    if (logoText) logoText.textContent = mode === 'division' ? '나눗셈 어드벤처' : '구구단 어드벤처';
+
+    refreshAllLiveViews();
+  }
+
+  function updateLobbyContentByMode() {
+    const isDiv = (currentMode === 'division');
+
+    // Lobby Section Title
+    const sectionTitle = document.querySelector('#lobbyView .section-title');
+    if (sectionTitle) {
+      sectionTitle.textContent = isDiv ? '🏋️‍♂️ 나눗셈 훈련하기' : '🏋️‍♂️ 구구단 훈련하기';
+    }
+
+    // Game Card 1
+    const card1 = document.getElementById('cardGame1');
+    if (card1) {
+      card1.querySelector('.game-name').textContent = isDiv ? '나눗셈 스피드 레이스' : '구구단 스피드 레이스';
+      card1.querySelector('.game-formula-example').innerHTML = isDiv ? '설명: <code>12 ÷ 3 = ?</code>' : '설명: <code>2 x 3 = ?</code>';
+      card1.querySelector('.game-desc').textContent = isDiv ? '제시되는 나눗셈의 올바른 정답을 순발력 있게 클릭하세요!' : '제시되는 곱셈의 올바른 정답을 순발력 있게 클릭하세요!';
+    }
+
+    // Game Card 2
+    const card2 = document.getElementById('cardGame2');
+    if (card2) {
+      card2.querySelector('.game-name').textContent = isDiv ? '나눗셈 숫자 탐정 1' : '구구단 숫자 탐정';
+      card2.querySelector('.game-formula-example').innerHTML = isDiv ? '설명: <code>12 ÷ ? = 4</code>' : '설명: <code>? x 3 = 6</code>';
+      card2.querySelector('.game-desc').textContent = isDiv ? '나누는 빈칸에 들어갈 숫자를 찾아내는 숫자 탐정이 되어보세요!' : '곱해지는 빈칸에 들어갈 숫자를 찾아내는 숫자 탐정이 되어보세요!';
+    }
+
+    // Game Card 3
+    const card3 = document.getElementById('cardGame3');
+    if (card3) {
+      card3.querySelector('.game-name').textContent = isDiv ? '나눗셈 숫자 탐정 2' : '구구단 짝 맞추기';
+      card3.querySelector('.game-formula-example').innerHTML = isDiv ? '설명: <code>? ÷ 3 = 4</code>' : '설명: <code>? x ? = 6</code>';
+      card3.querySelector('.game-desc').textContent = isDiv ? '나누어지는 빈칸에 들어갈 숫자를 빠르게 맞혀보세요!' : '결과값 곱이 제시되면, 곱해서 해당 숫자가 되는 두 수 조각을 연속 클릭하세요!';
+    }
+
+    // Boss Dungeon Banner Card
+    const bossTitle = document.querySelector('#bossBannerCard .boss-title');
+    const bossDesc = document.querySelector('#bossBannerCard .boss-desc');
+    const bossBtn = document.getElementById('enterBossBtn');
+
+    if (bossTitle) bossTitle.textContent = isDiv ? '👾 나눗셈 마왕 보스전' : '👹 구구단 마왕 보스전';
+    if (bossDesc) {
+      bossDesc.innerHTML = isDiv 
+        ? '마왕이 10개의 나눗셈 문제를 던집니다! 10문제를 연속으로 완파하여 마왕을 봉인하세요.<br><small>⚠️ 틀려도 시간은 흘러가며, 정답을 선택해야만 다음 문제로 넘어갈 수 있습니다.</small>'
+        : '마왕이 10개의 구구단 문제를 던집니다! 10문제를 연속으로 완파하여 마왕을 봉인하세요.<br><small>⚠️ 틀려도 시간은 흘러가며, 정답을 선택해야만 다음 문제로 넘어갈 수 있습니다.</small>';
+    }
+    if (bossBtn) {
+      bossBtn.textContent = isDiv ? '🔥 나눗셈 마왕 던전 입장하기 (100 Gold)' : '🔥 구구단 마왕 던전 입장하기 (100 Gold)';
+    }
+
+    // Hall of Heroes Triple Column Titles
+    const col1 = document.querySelector('#miniRankBody1')?.closest('.mini-rank-column')?.querySelector('.column-title');
+    const col2 = document.querySelector('#miniRankBody2')?.closest('.mini-rank-column')?.querySelector('.column-title');
+    const col3 = document.querySelector('#miniRankBody3')?.closest('.mini-rank-column')?.querySelector('.column-title');
+
+    if (col1) col1.textContent = isDiv ? '🎯 나눗셈 스피드 레이스' : '🎯 구구단 스피드 레이스';
+    if (col2) col2.textContent = isDiv ? '🔍 나눗셈 숫자 탐정 1' : '🔍 구구단 숫자 탐정';
+    if (col3) col3.textContent = isDiv ? '🧩 나눗셈 숫자 탐정 2' : '🧩 구구단 짝 맞추기';
   }
 
   // -------------------------------------------------------------------------
@@ -477,11 +692,20 @@
   function updateHeaderUI() {
     if (!currentUser) return;
 
-    updateUserTitleIndex(currentUser);
-    const titleObj = TITLES[currentUser.titleIndex || 0];
+    if (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
+      const mData = getUserModeData(currentUser, currentMode);
+      updateUserTitleIndex(currentUser, currentMode);
+      const titlesList = TITLES_MAP[currentMode] || TITLES_MAP.gugudan;
+      const titleObj = titlesList[mData.titleIndex || 0] || titlesList[0];
 
-    document.getElementById('headerUserTitleEmoji').textContent = titleObj.emoji;
-    document.getElementById('headerUserTitleName').textContent = titleObj.name;
+      document.getElementById('headerUserTitleEmoji').textContent = titleObj.emoji;
+      document.getElementById('headerUserTitleName').textContent = titleObj.name;
+      document.getElementById('userGoldVal').textContent = mData.currentGold || 0;
+    } else {
+      document.getElementById('headerUserTitleEmoji').textContent = '👩‍🏫';
+      document.getElementById('headerUserTitleName').textContent = '교사';
+      document.getElementById('userGoldVal').textContent = '999';
+    }
 
     if (currentUser.role === 'student' && registeredClasses[currentUser.inviteCode]) {
       currentUser.className = registeredClasses[currentUser.inviteCode].className || currentUser.className;
@@ -495,8 +719,6 @@
     else if (currentUser.role === 'anon') roleBadge.textContent = '익명';
     else roleBadge.textContent = '학생';
 
-    document.getElementById('userGoldVal').textContent = currentUser.currentGold || 0;
-
     const adminBtn = document.getElementById('openAdminBtn');
     if (currentUser.role === 'teacher' || currentUser.role === 'superadmin') {
       adminBtn.classList.remove('hidden');
@@ -506,14 +728,14 @@
   }
 
   // -------------------------------------------------------------------------
-  // 5. Question Generator Engine
+  // 5. Question Generator Engine (Gugudan & Division)
   // -------------------------------------------------------------------------
 
   function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function generateQuestion(gameType) {
+  function generateGugudanQuestion(gameType) {
     const a = getRandomInt(2, 9);
     const b = getRandomInt(2, 9);
     const product = a * b;
@@ -526,6 +748,7 @@
       }
       return {
         type: 1,
+        mode: 'gugudan',
         a, b, product,
         prompt: `${a} × ${b} = ?`,
         correctAnswer: product,
@@ -542,6 +765,7 @@
       }
       return {
         type: 2,
+        mode: 'gugudan',
         a, b, product,
         missing, hideFirst,
         prompt: hideFirst ? `? × ${b} = ${product}` : `${a} × ? = ${product}`,
@@ -559,6 +783,7 @@
       }
       return {
         type: 3,
+        mode: 'gugudan',
         a, b, product,
         prompt: `? × ? = ${product}`,
         correctPair: [a, b],
@@ -567,9 +792,88 @@
     }
   }
 
+  function generateDivisionQuestion(gameType) {
+    const b = getRandomInt(2, 9); // Divisor
+    const c = getRandomInt(2, 9); // Quotient
+    const a = b * c;              // Dividend (12)
+
+    if (gameType === 1 || gameType === 'boss') {
+      // 12 ÷ 3 = ? (Correct Answer: c = 4)
+      const options = new Set([c]);
+      while (options.size < 4) {
+        let fake = getRandomInt(2, 9);
+        if (fake !== c) options.add(fake);
+      }
+      return {
+        type: 1,
+        mode: 'division',
+        a, b, c,
+        prompt: `${a} ÷ ${b} = ?`,
+        correctAnswer: c,
+        options: Array.from(options).sort(() => Math.random() - 0.5)
+      };
+    } else if (gameType === 2) {
+      // 12 ÷ ? = 4 (Correct Answer: b = 3)
+      const options = new Set([b]);
+      while (options.size < 4) {
+        let fake = getRandomInt(2, 9);
+        if (fake !== b) options.add(fake);
+      }
+      return {
+        type: 2,
+        mode: 'division',
+        a, b, c,
+        prompt: `${a} ÷ ? = ${c}`,
+        correctAnswer: b,
+        options: Array.from(options).sort(() => Math.random() - 0.5)
+      };
+    } else if (gameType === 3) {
+      // ? ÷ 3 = 4 (Correct Answer: a = 12)
+      const options = new Set([a]);
+      while (options.size < 4) {
+        let fakeFactorB = getRandomInt(2, 9);
+        let fakeFactorC = getRandomInt(2, 9);
+        let fakeA = fakeFactorB * fakeFactorC;
+        if (fakeA !== a) options.add(fakeA);
+      }
+      return {
+        type: 3,
+        mode: 'division',
+        a, b, c,
+        prompt: `? ÷ ${b} = ${c}`,
+        correctAnswer: a,
+        options: Array.from(options).sort(() => Math.random() - 0.5)
+      };
+    }
+  }
+
+  function generateQuestion(gameType) {
+    if (currentMode === 'division') {
+      return generateDivisionQuestion(gameType);
+    } else {
+      return generateGugudanQuestion(gameType);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // 6. Mini-Games Engine
   // -------------------------------------------------------------------------
+
+  function getGameConfig(gameType, mode = currentMode) {
+    if (mode === 'division') {
+      return {
+        1: { title: '나눗셈 스피드 레이스', icon: '🎯' },
+        2: { title: '나눗셈 숫자 탐정 1', icon: '🔍' },
+        3: { title: '나눗셈 숫자 탐정 2', icon: '🧩' }
+      }[gameType];
+    } else {
+      return {
+        1: { title: '구구단 스피드 레이스', icon: '🎯' },
+        2: { title: '구구단 숫자 탐정', icon: '🔍' },
+        3: { title: '구구단 짝 맞추기', icon: '🧩' }
+      }[gameType];
+    }
+  }
 
   function startMiniGame(gameType) {
     gameState.activeGame = gameType;
@@ -580,14 +884,9 @@
     gameState.earnedGold = 0;
     gameState.tileSelection = [];
 
-    const names = {
-      1: { title: '구구단 스피드 레이스', icon: '🎯' },
-      2: { title: '구구단 숫자 탐정', icon: '🔍' },
-      3: { title: '구구단 짝 맞추기', icon: '🧩' }
-    };
-
-    document.getElementById('playGameTitle').textContent = names[gameType].title;
-    document.getElementById('playGameIcon').textContent = names[gameType].icon;
+    const cfg = getGameConfig(gameType, currentMode);
+    document.getElementById('playGameTitle').textContent = cfg.title;
+    document.getElementById('playGameIcon').textContent = cfg.icon;
 
     updateGameStatsBar();
     showView('gamePlayView');
@@ -635,7 +934,7 @@
     document.getElementById('questionPrompt').textContent = q.prompt;
 
     const subtextEl = document.getElementById('questionSubtext');
-    if (q.type === 3) {
+    if (q.type === 3 && currentMode === 'gugudan') {
       subtextEl.textContent = '두 숫자를 차례대로 선택하세요 (재클릭 시 선택 해제)';
     } else {
       subtextEl.textContent = '올바른 정답을 선택하세요!';
@@ -644,7 +943,7 @@
     const grid = document.getElementById('answerOptionsGrid');
     grid.innerHTML = '';
 
-    if (q.type === 1 || q.type === 2) {
+    if (q.type === 1 || q.type === 2 || (q.type === 3 && currentMode === 'division')) {
       grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
       q.options.forEach(opt => {
         const btn = document.createElement('button');
@@ -654,7 +953,7 @@
         btn.addEventListener('click', () => handleOptionClick(opt, q.correctAnswer));
         grid.appendChild(btn);
       });
-    } else if (q.type === 3) {
+    } else if (q.type === 3 && currentMode === 'gugudan') {
       grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
 
       q.tiles.forEach((tile, index) => {
@@ -681,9 +980,10 @@
       }
 
       if (currentUser && gameState.currentQuestion) {
-        checkAndUpdateUserWeeklyReset(currentUser);
-        currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
-        currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
+        const mData = getUserModeData(currentUser, currentMode);
+        checkAndUpdateUserWeeklyReset(currentUser, currentMode);
+        mData.weeklySolved = (mData.weeklySolved || 0) + 1;
+        mData.totalSolved = (mData.totalSolved || 0) + 1;
       }
 
       updateGameStatsBar();
@@ -693,9 +993,10 @@
       gameState.currentCombo = 0;
 
       if (currentUser && gameState.currentQuestion) {
-        const table = gameState.currentQuestion.a;
-        if (!currentUser.weakTableErrors) currentUser.weakTableErrors = {};
-        currentUser.weakTableErrors[table] = (currentUser.weakTableErrors[table] || 0) + 1;
+        const mData = getUserModeData(currentUser, currentMode);
+        const table = gameState.currentQuestion.b || gameState.currentQuestion.a;
+        if (!mData.weakTableErrors) mData.weakTableErrors = {};
+        mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
       }
 
       updateGameStatsBar();
@@ -729,9 +1030,10 @@
         }
 
         if (currentUser) {
-          checkAndUpdateUserWeeklyReset(currentUser);
-          currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
-          currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
+          const mData = getUserModeData(currentUser, currentMode);
+          checkAndUpdateUserWeeklyReset(currentUser, currentMode);
+          mData.weeklySolved = (mData.weeklySolved || 0) + 1;
+          mData.totalSolved = (mData.totalSolved || 0) + 1;
         }
 
         updateGameStatsBar();
@@ -745,9 +1047,10 @@
         }, 300);
 
         if (currentUser && question) {
+          const mData = getUserModeData(currentUser, currentMode);
           const table = question.a;
-          if (!currentUser.weakTableErrors) currentUser.weakTableErrors = {};
-          currentUser.weakTableErrors[table] = (currentUser.weakTableErrors[table] || 0) + 1;
+          if (!mData.weakTableErrors) mData.weakTableErrors = {};
+          mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
         }
 
         updateGameStatsBar();
@@ -757,20 +1060,21 @@
 
   function finishMiniGame() {
     if (currentUser) {
-      currentUser.currentGold = (currentUser.currentGold || 0) + gameState.earnedGold;
-      currentUser.totalGold = (currentUser.totalGold || 0) + gameState.earnedGold;
+      const mData = getUserModeData(currentUser, currentMode);
+      mData.currentGold = (mData.currentGold || 0) + gameState.earnedGold;
+      mData.totalGold = (mData.totalGold || 0) + gameState.earnedGold;
 
       const todayStr = getTodayKSTDateString();
-      if (currentUser.lastActiveDate !== todayStr) {
-        currentUser.lastActiveDate = todayStr;
-        currentUser.todayClears = [0, 0, 0];
+      if (mData.lastActiveDate !== todayStr) {
+        mData.lastActiveDate = todayStr;
+        mData.todayClears = [0, 0, 0];
       }
-      if (!currentUser.todayClears) currentUser.todayClears = [0, 0, 0];
-      if (!currentUser.gameClears) currentUser.gameClears = [0, 0, 0];
+      if (!mData.todayClears) mData.todayClears = [0, 0, 0];
+      if (!mData.gameClears) mData.gameClears = [0, 0, 0];
 
       const gameIdx = gameState.activeGame - 1;
-      currentUser.todayClears[gameIdx] = (currentUser.todayClears[gameIdx] || 0) + 1;
-      currentUser.gameClears[gameIdx] = (currentUser.gameClears[gameIdx] || 0) + 1;
+      mData.todayClears[gameIdx] = (mData.todayClears[gameIdx] || 0) + 1;
+      mData.gameClears[gameIdx] = (mData.gameClears[gameIdx] || 0) + 1;
 
       saveUserDataInList(currentUser);
       saveSessionUser(currentUser);
@@ -792,9 +1096,11 @@
   function requestBossEntry() {
     if (!currentUser) return;
 
-    const gold = currentUser.currentGold || 0;
+    const mData = getUserModeData(currentUser, currentMode);
+    const gold = mData.currentGold || 0;
     const body = document.getElementById('bossConfirmBody');
     const actions = document.getElementById('bossConfirmActions');
+    const bossName = (currentMode === 'division') ? '나눗셈 마왕' : '구구단 마왕';
 
     if (gold < BOSS_ENTRY_GOLD) {
       const diff = BOSS_ENTRY_GOLD - gold;
@@ -803,11 +1109,11 @@
           ⛔ 골드가 부족합니다!
         </div>
         <p style="line-height: 1.6; color: var(--text-main); font-size: 1.05rem;">
-          구구단 마왕 던전에 입장하려면 <strong>${BOSS_ENTRY_GOLD} Gold</strong>가 필요합니다.<br>
+          ${bossName} 던전에 입장하려면 <strong>${BOSS_ENTRY_GOLD} Gold</strong>가 필요합니다.<br>
           (현재 보유: <strong>${gold} Gold</strong> / <strong>${diff} Gold</strong> 부족)
         </p>
         <p style="margin-top: 12px; font-size: 0.95rem; color: var(--text-muted);">
-          🏋️‍♂️ '구구단 훈련하기' 미니게임을 플레이하여 골드를 모아보세요!
+          🏋️‍♂️ 훈련하기 미니게임을 플레이하여 골드를 모아보세요!
         </p>
       `;
       actions.innerHTML = `
@@ -821,9 +1127,9 @@
     } else {
       body.innerHTML = `
         <div style="background-color: var(--bg-elevated); padding: 16px; border-radius: var(--radius-md); text-align: left; margin-bottom: 16px; border: 1px solid var(--border-color);">
-          <h3 style="color: var(--accent-purple); margin-bottom: 6px;">👹 구구단 마왕 던전</h3>
+          <h3 style="color: var(--accent-purple); margin-bottom: 6px;">👹 ${bossName} 던전</h3>
           <p style="font-size: 0.95rem; line-height: 1.5; color: var(--text-main); margin-bottom: 10px;">
-            <strong>설명:</strong> 10개의 구구단 문제를 해결하여 마왕을 봉인하고, 최단 신기록을 달성하세요.
+            <strong>설명:</strong> 10개의 ${currentMode === 'division' ? '나눗셈' : '구구단'} 문제를 해결하여 마왕을 봉인하고, 최단 신기록을 달성하세요.
           </p>
           <div style="font-size: 0.95rem; color: #DC2626; font-weight: 800; margin-bottom: 6px;">
             ⚔️ 도전조건: ${BOSS_ENTRY_GOLD} 골드 소모
@@ -850,8 +1156,8 @@
 
       document.getElementById('bossRealEnterBtn').addEventListener('click', () => {
         closeModal('bossConfirmModal');
-        currentUser.currentGold -= BOSS_ENTRY_GOLD;
-        currentUser.bossCount = (currentUser.bossCount || 0) + 1;
+        mData.currentGold -= BOSS_ENTRY_GOLD;
+        mData.bossCount = (mData.bossCount || 0) + 1;
         saveUserDataInList(currentUser);
         saveSessionUser(currentUser);
         updateHeaderUI();
@@ -891,8 +1197,16 @@
 
   function updateBossUI() {
     const q = gameState.bossProblems[gameState.bossProblemIndex];
+    const bossNameTag = (currentMode === 'division') ? '👾 나눗셈 마왕' : '👹 구구단 마왕';
+    const bossAvatarEmoji = (currentMode === 'division') ? '👾' : '👹';
+
+    const tagEl = document.querySelector('.boss-name-tag');
+    if (tagEl) tagEl.innerHTML = `${bossNameTag} (남은 문제: <span id="bossRemainCount">${10 - gameState.bossProblemIndex}</span>/10)`;
+    
+    const avatarEl = document.getElementById('bossAvatar');
+    if (avatarEl) avatarEl.textContent = bossAvatarEmoji;
+
     document.getElementById('bossQNum').textContent = `문제 ${gameState.bossProblemIndex + 1} / 10`;
-    document.getElementById('bossRemainCount').textContent = 10 - gameState.bossProblemIndex;
 
     const hpPercent = ((10 - gameState.bossProblemIndex) / 10) * 100;
     document.getElementById('bossHpBar').style.width = `${hpPercent}%`;
@@ -932,9 +1246,10 @@
       triggerFloatingDamage(`💥 -1 HP`);
 
       if (currentUser) {
-        checkAndUpdateUserWeeklyReset(currentUser);
-        currentUser.weeklySolved = (currentUser.weeklySolved || 0) + 1;
-        currentUser.totalSolved = (currentUser.totalSolved || 0) + 1;
+        const mData = getUserModeData(currentUser, currentMode);
+        checkAndUpdateUserWeeklyReset(currentUser, currentMode);
+        mData.weeklySolved = (mData.weeklySolved || 0) + 1;
+        mData.totalSolved = (mData.totalSolved || 0) + 1;
       }
 
       gameState.bossProblemIndex++;
@@ -951,9 +1266,10 @@
       gameState.currentCombo = 0;
 
       if (currentUser && gameState.bossProblems[gameState.bossProblemIndex]) {
-        const table = gameState.bossProblems[gameState.bossProblemIndex].a;
-        if (!currentUser.weakTableErrors) currentUser.weakTableErrors = {};
-        currentUser.weakTableErrors[table] = (currentUser.weakTableErrors[table] || 0) + 1;
+        const mData = getUserModeData(currentUser, currentMode);
+        const table = gameState.bossProblems[gameState.bossProblemIndex].b || gameState.bossProblems[gameState.bossProblemIndex].a;
+        if (!mData.weakTableErrors) mData.weakTableErrors = {};
+        mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
       }
 
       updateBossUI();
@@ -980,17 +1296,19 @@
     sound.playVictory();
 
     if (currentUser) {
-      if (!currentUser.bossFastestTime || parseFloat(totalTime) < parseFloat(currentUser.bossFastestTime)) {
-        currentUser.bossFastestTime = parseFloat(totalTime);
+      const mData = getUserModeData(currentUser, currentMode);
+      if (!mData.bossFastestTime || parseFloat(totalTime) < parseFloat(mData.bossFastestTime)) {
+        mData.bossFastestTime = parseFloat(totalTime);
       }
-      updateUserTitleIndex(currentUser);
+      updateUserTitleIndex(currentUser, currentMode);
       saveUserDataInList(currentUser);
       saveSessionUser(currentUser);
     }
 
     updateHeaderUI();
 
-    alert(`🎉 구구단 마왕 봉인 완료!\n⏱️ 클리어 시간: ${totalTime}초\n보스를 물리치고 영웅의 전당에 이름을 올렸습니다!`);
+    const bossNameStr = (currentMode === 'division') ? '나눗셈 마왕' : '구구단 마왕';
+    alert(`🎉 ${bossNameStr} 봉인 완료!\n⏱️ 클리어 시간: ${totalTime}초\n보스를 물리치고 영웅의 전당에 이름을 올렸습니다!`);
     showView('lobbyView');
   }
 
@@ -1032,7 +1350,10 @@
       }
     }
 
-    list.forEach(u => checkAndUpdateUserWeeklyReset(u));
+    list.forEach(u => {
+      getUserModeData(u, currentMode);
+      checkAndUpdateUserWeeklyReset(u, currentMode);
+    });
     return list;
   }
 
@@ -1077,21 +1398,19 @@
 
     if (category === 'gold') {
       scoreHeader.textContent = '누적 골드';
-      // Exclude 0 gold users from ranking
-      list = list.filter(u => (u.totalGold || 0) > 0);
-      list.sort((a, b) => (b.totalGold || 0) - (a.totalGold || 0));
-      getScoreVal = u => (u.totalGold || 0);
+      list = list.filter(u => (getUserModeData(u, currentMode).totalGold || 0) > 0);
+      list.sort((a, b) => (getUserModeData(b, currentMode).totalGold || 0) - (getUserModeData(a, currentMode).totalGold || 0));
+      getScoreVal = u => (getUserModeData(u, currentMode).totalGold || 0);
     } else if (category === 'boss') {
       scoreHeader.textContent = '최단 타임';
-      list = list.filter(u => u.bossFastestTime !== null && u.bossFastestTime !== undefined);
-      list.sort((a, b) => parseFloat(a.bossFastestTime) - parseFloat(b.bossFastestTime));
-      getScoreVal = u => parseFloat(u.bossFastestTime || 9999);
+      list = list.filter(u => getUserModeData(u, currentMode).bossFastestTime !== null && getUserModeData(u, currentMode).bossFastestTime !== undefined);
+      list.sort((a, b) => parseFloat(getUserModeData(a, currentMode).bossFastestTime) - parseFloat(getUserModeData(b, currentMode).bossFastestTime));
+      getScoreVal = u => parseFloat(getUserModeData(u, currentMode).bossFastestTime || 9999);
     } else if (category === 'diligence') {
       scoreHeader.textContent = '주간 푼 문제';
-      // Exclude 0 weekly solved users from ranking
-      list = list.filter(u => (u.weeklySolved || 0) > 0);
-      list.sort((a, b) => (b.weeklySolved || 0) - (a.weeklySolved || 0));
-      getScoreVal = u => (u.weeklySolved || 0);
+      list = list.filter(u => (getUserModeData(u, currentMode).weeklySolved || 0) > 0);
+      list.sort((a, b) => (getUserModeData(b, currentMode).weeklySolved || 0) - (getUserModeData(a, currentMode).weeklySolved || 0));
+      getScoreVal = u => (getUserModeData(u, currentMode).weeklySolved || 0);
     }
 
     const rankedList = calculateJointRanks(list, getScoreVal);
@@ -1101,16 +1420,15 @@
       tbody.innerHTML = `
         <tr>
           <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">
-            ✨ 아직 영웅의 전당에 등록된 도전자가 없습니다. 구구단 훈련을 마치고 첫 번째 영웅이 되어보세요!
+            ✨ 아직 영웅의 전당에 등록된 도전자가 없습니다. 훈련을 마치고 첫 번째 영웅이 되어보세요!
           </td>
         </tr>
       `;
     } else {
       top10Ranked.forEach((item) => {
         const u = item.user;
+        const uData = getUserModeData(u, currentMode);
         const tr = document.createElement('tr');
-
-        // Check if this row is current logged-in user
         const isMyRow = currentUser && (u.id === currentUser.id);
         if (isMyRow) {
           tr.className = 'my-row-highlight';
@@ -1122,13 +1440,13 @@
         else if (item.rankNum === 3) rankStyle = 'rank-top3';
 
         let scoreStr = '';
-        if (category === 'gold') scoreStr = `${u.totalGold || 0} Gold`;
-        else if (category === 'boss') scoreStr = `${u.bossFastestTime}초`;
-        else if (category === 'diligence') scoreStr = `${u.weeklySolved || 0}문제`;
+        if (category === 'gold') scoreStr = `${uData.totalGold || 0} Gold`;
+        else if (category === 'boss') scoreStr = `${uData.bossFastestTime}초`;
+        else if (category === 'diligence') scoreStr = `${uData.weeklySolved || 0}문제`;
 
         tr.innerHTML = `
           <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
-          <td>${getFullUserTitleString(u)} ${isMyRow ? '📍 (나)' : ''}</td>
+          <td>${getFullUserTitleString(u, currentMode)} ${isMyRow ? '📍 (나)' : ''}</td>
           <td>${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
         `;
@@ -1140,14 +1458,16 @@
     const myRankBanner = document.getElementById('myRankBanner');
     if (currentUser && currentUser.role !== 'teacher' && currentUser.role !== 'superadmin') {
       const myItem = rankedList.find(item => item.user.id === currentUser.id);
+      const curData = getUserModeData(currentUser, currentMode);
+
       if (myItem && myItem.rankNum > 10) {
         document.getElementById('myRankPos').textContent = myItem.rankDisplay;
-        document.getElementById('myRankUser').textContent = getFullUserTitleString(currentUser);
+        document.getElementById('myRankUser').textContent = getFullUserTitleString(currentUser, currentMode);
 
         let myScoreStr = '';
-        if (category === 'gold') myScoreStr = `${currentUser.totalGold || 0} Gold`;
-        else if (category === 'boss') myScoreStr = currentUser.bossFastestTime ? `${currentUser.bossFastestTime}초` : '기록 없음';
-        else if (category === 'diligence') myScoreStr = `${currentUser.weeklySolved || 0}문제`;
+        if (category === 'gold') myScoreStr = `${curData.totalGold || 0} Gold`;
+        else if (category === 'boss') myScoreStr = curData.bossFastestTime ? `${curData.bossFastestTime}초` : '기록 없음';
+        else if (category === 'diligence') myScoreStr = `${curData.weeklySolved || 0}문제`;
 
         document.getElementById('myRankScore').textContent = myScoreStr;
         myRankBanner.classList.remove('hidden');
@@ -1167,19 +1487,26 @@
       tbody.innerHTML = '';
 
       const gameIdx = gameId - 1;
-      const activeList = [...list].filter(u => (u.gameClears && u.gameClears[gameIdx] > 0));
+      const activeList = [...list].filter(u => {
+        const mData = getUserModeData(u, currentMode);
+        return mData.gameClears && mData.gameClears[gameIdx] > 0;
+      });
       
-      // Sort by clear count descending; if tied, tie-breaker by totalGold descending!
       activeList.sort((a, b) => {
-        const aVal = (a.gameClears && a.gameClears[gameIdx]) || 0;
-        const bVal = (b.gameClears && b.gameClears[gameIdx]) || 0;
+        const aData = getUserModeData(a, currentMode);
+        const bData = getUserModeData(b, currentMode);
+        const aVal = (aData.gameClears && aData.gameClears[gameIdx]) || 0;
+        const bVal = (bData.gameClears && bData.gameClears[gameIdx]) || 0;
         if (bVal !== aVal) return bVal - aVal;
-        return (b.totalGold || 0) - (a.totalGold || 0);
+        return (bData.totalGold || 0) - (aData.totalGold || 0);
       });
 
-      const getClearVal = u => (u.gameClears && u.gameClears[gameIdx]) || 0;
+      const getClearVal = u => {
+        const mData = getUserModeData(u, currentMode);
+        return (mData.gameClears && mData.gameClears[gameIdx]) || 0;
+      };
+
       const rankedList = calculateJointRanks(activeList, getClearVal);
-      // Limit to Top 5 ranks as requested
       const top5Ranked = rankedList.filter(item => item.rankNum <= 5);
 
       if (top5Ranked.length === 0) {
@@ -1194,7 +1521,7 @@
 
           tr.innerHTML = `
             <td><strong>${item.rankDisplay}</strong></td>
-            <td style="font-size: 0.85rem;">${getFullUserTitleString(u)} ${isMyRow ? '📍(나)' : ''}</td>
+            <td style="font-size: 0.85rem;">${getFullUserTitleString(u, currentMode)} ${isMyRow ? '📍(나)' : ''}</td>
             <td><strong>${count}회</strong></td>
           `;
           tbody.appendChild(tr);
@@ -1216,7 +1543,7 @@
   }
 
   // -------------------------------------------------------------------------
-  // 9. 6-Digit Class Code Teacher Access Logic
+  // 9. 6-Digit Class Code Teacher Access Logic & Admin Page
   // -------------------------------------------------------------------------
 
   async function loginTeacherByClassCode(inviteCode, teacherCustomName = '') {
@@ -1232,7 +1559,6 @@
 
     let teacherRecord = registeredClasses[cleanCode];
 
-    // Fetch existing class from Firestore Cloud using inviteCode
     if (db) {
       try {
         const docSnap = await db.collection('classes').doc(cleanCode).get();
@@ -1250,7 +1576,7 @@
       teacherRecord = {
         inviteCode: cleanCode,
         teacherName: tName,
-        className: '', // Initially empty until teacher sets class name!
+        className: '',
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
@@ -1363,19 +1689,20 @@
     const todayStr = getTodayKSTDateString();
 
     sortedStudents.forEach(std => {
-      const todayClears = (std.lastActiveDate === todayStr && std.todayClears) ? std.todayClears : [0, 0, 0];
-      const totalClears = std.gameClears || [0, 0, 0];
+      const stdData = getUserModeData(std, currentMode);
+      const todayClears = (stdData.lastActiveDate === todayStr && stdData.todayClears) ? stdData.todayClears : [0, 0, 0];
+      const totalClears = stdData.gameClears || [0, 0, 0];
 
-      const currentGoldVal = std.currentGold !== undefined ? std.currentGold : (std.totalGold || 0);
-      const totalGoldVal = std.totalGold || 0;
+      const currentGoldVal = stdData.currentGold !== undefined ? stdData.currentGold : (stdData.totalGold || 0);
+      const totalGoldVal = stdData.totalGold || 0;
       const goldDisplay = `🪙 ${currentGoldVal} (${totalGoldVal})`;
 
       const g1Str = `${todayClears[0] || 0} (${totalClears[0] || 0})`;
       const g2Str = `${todayClears[1] || 0} (${totalClears[1] || 0})`;
       const g3Str = `${todayClears[2] || 0} (${totalClears[2] || 0})`;
 
-      const bossCount = std.bossCount || 0;
-      const bossTimeStr = std.bossFastestTime ? `${std.bossFastestTime}초` : '-';
+      const bossCount = stdData.bossCount || 0;
+      const bossTimeStr = stdData.bossFastestTime ? `${stdData.bossFastestTime}초` : '-';
       const bossDisplay = `${bossCount}회 (${bossTimeStr})`;
 
       const tr = document.createElement('tr');
@@ -1438,11 +1765,12 @@
   }
 
   function showWeakTableChartModal(student) {
-    document.getElementById('chartStudentName').textContent = student.name;
+    document.getElementById('chartStudentName').textContent = `${student.name} (${currentMode === 'division' ? '나눗셈' : '구구단'})`;
     const container = document.getElementById('chartBarsContainer');
     container.innerHTML = '';
 
-    const errors = student.weakTableErrors || {};
+    const stdData = getUserModeData(student, currentMode);
+    const errors = stdData.weakTableErrors || {};
     let maxError = 1;
     for (let t = 2; t <= 9; t++) {
       if ((errors[t] || 0) > maxError) maxError = errors[t];
@@ -1455,25 +1783,27 @@
 
       const barItem = document.createElement('div');
       barItem.className = 'chart-bar-item';
+      const labelText = (currentMode === 'division') ? `÷${t}` : `${t}단`;
+
       barItem.innerHTML = `
         <span class="bar-val">${count}회</span>
         <div class="bar-fill" style="height: ${Math.max(pct, 8)}%;"></div>
-        <span class="bar-label">${t}단</span>
+        <span class="bar-label">${labelText}</span>
       `;
       container.appendChild(barItem);
 
-      if (count > 4) highestWeak.push(`${t}단`);
+      if (count > 4) highestWeak.push(labelText);
     }
 
     const summaryBox = document.getElementById('chartSummaryBox');
     if (highestWeak.length > 0) {
       summaryBox.innerHTML = `
         💡 <strong>분석 결과:</strong> ${student.name} 학생은 <strong style="color: #DC2626;">${highestWeak.join(', ')}</strong>에서 오답률이 상대적으로 높습니다.<br>
-        해당 단수의 집중적인 반복 훈련을 권장합니다.
+        해당 구간의 집중적인 반복 훈련을 권장합니다.
       `;
     } else {
       summaryBox.innerHTML = `
-        ✨ <strong>분석 결과:</strong> ${student.name} 학생은 2단부터 9단까지 전반적으로 높은 정답률을 유지하고 있습니다!
+        ✨ <strong>분석 결과:</strong> ${student.name} 학생은 ${currentMode === 'division' ? '나눗셈 2~9' : '2단~9단'} 전반적으로 높은 정답률을 유지하고 있습니다!
       `;
     }
 
@@ -1488,9 +1818,11 @@
     const container = document.getElementById('titleListContainer');
     container.innerHTML = '';
 
-    const currentLevel = currentUser ? (currentUser.titleIndex || 0) : 0;
+    const mData = getUserModeData(currentUser, currentMode);
+    const currentLevel = mData ? (mData.titleIndex || 0) : 0;
+    const titlesList = TITLES_MAP[currentMode] || TITLES_MAP.gugudan;
 
-    TITLES.forEach(t => {
+    titlesList.forEach(t => {
       const isUnlocked = t.level <= currentLevel;
       const card = document.createElement('div');
       card.className = `title-item-card ${isUnlocked ? 'unlocked' : ''}`;
@@ -1516,7 +1848,6 @@
   function initApp() {
     loadStorageData();
     initFirestoreRealtimeListeners();
-
     ensureFirebaseAuth();
 
     window.addEventListener('storage', (e) => {
@@ -1536,6 +1867,14 @@
       openModal('loginModal');
       showView('lobbyView');
     }
+
+    // Mode Switcher Tabs Event Listeners
+    document.querySelectorAll('.mode-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const mode = e.currentTarget.dataset.mode;
+        setMode(mode);
+      });
+    });
 
     const roleTabs = document.querySelectorAll('.role-tab-btn');
     roleTabs.forEach(tab => {
@@ -1606,21 +1945,13 @@
           name: name,
           role: 'student',
           className: displayClassName,
-          inviteCode: invite,
-          titleIndex: 0,
-          totalGold: 0,
-          currentGold: 0,
-          totalSolved: 0,
-          weeklySolved: 0,
-          bossCount: 0,
-          bossFastestTime: null,
-          gameClears: [0, 0, 0],
-          weakTableErrors: {}
+          inviteCode: invite
         };
       } else {
         studentUser.className = displayClassName;
       }
 
+      getUserModeData(studentUser, currentMode);
       await saveUserDataInList(studentUser);
       saveSessionUser(studentUser);
       closeModal('loginModal');
@@ -1628,13 +1959,12 @@
       showView('lobbyView');
     });
 
-    // Dynamic Input Listener for Teacher Code Input: Numeric Only & Red Warning check
+    // Dynamic Input Listener for Teacher Code Input
     const teacherCodeInput = document.getElementById('teacherCodeInput');
     const teacherCodeWarning = document.getElementById('teacherCodeWarning');
 
     if (teacherCodeInput) {
       teacherCodeInput.addEventListener('input', (e) => {
-        // Enforce digits only (replace any Korean or letters)
         e.target.value = e.target.value.replace(/[^0-9]/g, '');
 
         const val = e.target.value.trim();
@@ -1678,7 +2008,7 @@
       closeModal('classConfigModal');
     });
 
-    // Submit Teacher Class Name Configuration (e.g. '3-6') & Teacher Nickname
+    // Submit Teacher Class Name Configuration
     document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
@@ -1744,18 +2074,10 @@
       const anonUser = {
         id: `anon_${randomCode}`,
         name: `익명${randomCode}`,
-        role: 'anon',
-        titleIndex: 0,
-        totalGold: 0,
-        currentGold: 0,
-        totalSolved: 0,
-        weeklySolved: 0,
-        bossCount: 0,
-        bossFastestTime: null,
-        gameClears: [0, 0, 0],
-        weakTableErrors: {}
+        role: 'anon'
       };
 
+      getUserModeData(anonUser, currentMode);
       await saveUserDataInList(anonUser);
       saveSessionUser(anonUser);
       closeModal('loginModal');
@@ -1836,6 +2158,9 @@
       sound.enabled = !sound.enabled;
       document.getElementById('soundIcon').textContent = sound.enabled ? '🔊' : '🔇';
     });
+
+    // Initial Mode Setup
+    setMode('gugudan');
   }
 
   // Run App Initialization on DOM Load

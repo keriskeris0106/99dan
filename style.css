@@ -90,6 +90,56 @@ body.theme-ivory {
   gap: 20px;
 }
 
+.header-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.mode-tabs-box {
+  display: flex;
+  background-color: var(--bg-elevated);
+  padding: 4px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  gap: 4px;
+}
+
+.mode-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-tab-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.mode-tab-btn.active {
+  background-color: var(--accent-purple);
+  color: #FFF;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+
+body.mode-division .mode-tab-btn.active {
+  background-color: #0284C7;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+}
+
+body.mode-division .logo-title {
+  color: #0284C7;
+}
+
 .logo-title {
   font-size: 1.75rem;
   font-weight: 900;

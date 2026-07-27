@@ -28,7 +28,7 @@
     <header class="main-header" id="mainHeader">
       <div class="header-left">
         <h1 class="logo-title" id="logoBtn">
-          <span class="logo-icon">⚔️</span> 구구단 어드벤처
+          <span class="logo-icon" id="headerLogoIcon">⚔️</span> <span id="headerLogoText">구구단 어드벤처</span>
         </h1>
         <div class="user-badge-container" id="userBadgeContainer">
           <button type="button" class="user-title-btn" id="userTitleBtn" title="칭호 및 획득 조건 보기">
@@ -37,6 +37,18 @@
           </button>
           <span class="user-name-tag" id="headerUserName">익명A1B2</span>
           <span class="user-role-badge" id="headerUserRoleBadge">학생</span>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Nav Tabs -->
+      <div class="header-center">
+        <div class="mode-tabs-box" id="modeTabsBox">
+          <button type="button" class="mode-tab-btn active" data-mode="gugudan" id="modeBtnGugudan">
+            <span class="mode-tab-icon">⚔️</span> 구구단
+          </button>
+          <button type="button" class="mode-tab-btn" data-mode="division" id="modeBtnDivision">
+            <span class="mode-tab-icon">➗</span> 나눗셈
+          </button>
         </div>
       </div>
 
