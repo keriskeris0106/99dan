@@ -1231,7 +1231,7 @@
       btn.type = 'button';
       btn.className = 'boss-option-btn';
       btn.textContent = opt;
-      btn.addEventListener('click', () => handleBossOptionClick(btn, opt, q.correctAnswer));
+      btn.addEventListener('click', () => handleBossOptionClick(opt, q.correctAnswer));
       grid.appendChild(btn);
     });
 
@@ -1244,9 +1244,7 @@
     }
   }
 
-  function handleBossOptionClick(btn, selectedVal, correctVal) {
-    if (btn.classList.contains('wrong-choice')) return;
-
+  function handleBossOptionClick(selectedVal, correctVal) {
     if (selectedVal === correctVal) {
       sound.playHit();
       sound.playCorrect();
@@ -1275,8 +1273,6 @@
     } else {
       sound.playWrong();
       gameState.currentCombo = 0;
-
-      btn.classList.add('wrong-choice');
 
       const comboBox = document.getElementById('bossComboBox');
       if (comboBox) comboBox.classList.add('hidden');
