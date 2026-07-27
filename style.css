@@ -821,20 +821,31 @@ body.in-dungeon {
 
 .boss-q-number {
   color: #FCA5A5;
-  font-size: 1rem;
-  margin-bottom: 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin-bottom: 6px;
 }
 
-.boss-q-prompt {
-  font-size: 3.4rem;
-  font-weight: 900;
-  color: #FFF;
+.boss-q-text, .boss-q-prompt {
+  font-size: 4.5rem !important;
+  font-weight: 900 !important;
+  color: #FFFFFF !important;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.95), 0 0 24px rgba(239, 68, 68, 0.7);
+  letter-spacing: 3px;
+  margin: 12px 0;
+  line-height: 1.2;
+}
+
+@media (max-width: 600px) {
+  .boss-q-text, .boss-q-prompt {
+    font-size: 3.2rem !important;
+  }
 }
 
 .boss-q-sub {
   color: #FECACA;
-  font-size: 0.9rem;
-  margin-top: 6px;
+  font-size: 1rem;
+  margin-top: 8px;
 }
 
 .boss-answers-grid {
