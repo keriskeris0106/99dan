@@ -1366,6 +1366,10 @@
       const todayClears = (std.lastActiveDate === todayStr && std.todayClears) ? std.todayClears : [0, 0, 0];
       const totalClears = std.gameClears || [0, 0, 0];
 
+      const currentGoldVal = std.currentGold !== undefined ? std.currentGold : (std.totalGold || 0);
+      const totalGoldVal = std.totalGold || 0;
+      const goldDisplay = `🪙 ${currentGoldVal} (${totalGoldVal}) Gold`;
+
       const g1Str = `${todayClears[0] || 0} (${totalClears[0] || 0})`;
       const g2Str = `${todayClears[1] || 0} (${totalClears[1] || 0})`;
       const g3Str = `${todayClears[2] || 0} (${totalClears[2] || 0})`;
@@ -1377,7 +1381,7 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td><strong>${std.name}</strong></td>
-        <td>🪙 ${std.totalGold || 0} Gold</td>
+        <td><strong>${goldDisplay}</strong></td>
         <td><strong>${g1Str}</strong></td>
         <td><strong>${g2Str}</strong></td>
         <td><strong>${g3Str}</strong></td>
