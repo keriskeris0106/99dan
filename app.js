@@ -1368,7 +1368,7 @@
 
       const currentGoldVal = std.currentGold !== undefined ? std.currentGold : (std.totalGold || 0);
       const totalGoldVal = std.totalGold || 0;
-      const goldDisplay = `🪙 ${currentGoldVal} (${totalGoldVal}) Gold`;
+      const goldDisplay = `🪙 ${currentGoldVal} (${totalGoldVal})`;
 
       const g1Str = `${todayClears[0] || 0} (${totalClears[0] || 0})`;
       const g2Str = `${todayClears[1] || 0} (${totalClears[1] || 0})`;
@@ -1388,12 +1388,12 @@
         <td>⚔️ ${bossDisplay}</td>
         <td>
           <button type="button" class="btn btn-outline btn-sm view-chart-btn" data-id="${std.id}">
-            📊 취약 단수 차트
+            분석
           </button>
         </td>
         <td>
           <button type="button" class="btn btn-danger-soft btn-sm remove-student-btn" data-id="${std.id}" data-name="${std.name}">
-            🗑️ 제거
+            제거
           </button>
         </td>
       `;

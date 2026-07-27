@@ -1146,9 +1146,32 @@ body.in-dungeon {
 }
 
 .admin-table th, .admin-table td {
-  padding: 12px 16px;
+  padding: 10px 8px !important;
   border-bottom: 1px solid var(--border-soft);
-  text-align: left;
+  text-align: center !important;
+  white-space: nowrap !important;
+  font-size: 0.9rem !important;
+}
+
+.admin-table th {
+  background-color: var(--bg-elevated);
+  font-weight: 800;
+}
+
+.admin-table th small {
+  display: block;
+  font-size: 0.76rem !important;
+  font-weight: 400;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.admin-table .btn-sm {
+  padding: 4px 10px !important;
+  font-size: 0.82rem !important;
+  white-space: nowrap !important;
+  border-radius: 6px;
+  line-height: 1.2;
 }
 
 /* Visual Bar Chart in Modal */
