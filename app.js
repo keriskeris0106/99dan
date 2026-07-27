@@ -1201,12 +1201,6 @@
     gameState.timerId = setInterval(() => {
       const elapsed = ((Date.now() - gameState.bossStartTime) / 1000).toFixed(2);
       document.getElementById('bossTimerText').textContent = `${elapsed}초`;
-
-      const progBar = document.getElementById('bossTimerProgress');
-      if (progBar) {
-        const pct = Math.max(0, (1 - parseFloat(elapsed) / 60) * 100);
-        progBar.style.width = `${pct}%`;
-      }
     }, 50);
   }
 
@@ -1237,7 +1231,7 @@
       btn.type = 'button';
       btn.className = 'boss-option-btn';
       btn.textContent = opt;
-      btn.addEventListener('click', () => handleBossOptionClick(opt, q.correctAnswer));
+      btn.addEventListener('click', () => handleBossOptionClick(btn, opt, q.correctAnswer));
       grid.appendChild(btn);
     });
 
@@ -1250,7 +1244,9 @@
     }
   }
 
-  function handleBossOptionClick(selectedVal, correctVal) {
+  function handleBossOptionClick(btn, selectedVal, correctVal) {
+    if (btn.classList.contains('wrong-choice')) return;
+
     if (selectedVal === correctVal) {
       sound.playHit();
       sound.playCorrect();
@@ -1280,14 +1276,17 @@
       sound.playWrong();
       gameState.currentCombo = 0;
 
+      btn.classList.add('wrong-choice');
+
+      const comboBox = document.getElementById('bossComboBox');
+      if (comboBox) comboBox.classList.add('hidden');
+
       if (currentUser && gameState.bossProblems[gameState.bossProblemIndex]) {
         const mData = getUserModeData(currentUser, currentMode);
         const table = gameState.bossProblems[gameState.bossProblemIndex].b || gameState.bossProblems[gameState.bossProblemIndex].a;
         if (!mData.weakTableErrors) mData.weakTableErrors = {};
         mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
       }
-
-      updateBossUI();
     }
   }
 

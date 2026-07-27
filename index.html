@@ -138,13 +138,13 @@
               <span class="boss-badge">최종 관문</span>
               <h2 class="boss-title">👹 구구단 마왕 보스전</h2>
               <p class="boss-desc">
-                마왕이 10개의 구구단 문제를 던집니다! 10문제를 연속으로 완파하여 마왕을 봉인하세요.<br>
-                <small>⚠️ 틀려도 시간은 흘러가며, 정답을 선택해야만 다음 문제로 넘어갈 수 있습니다.</small>
+                마왕이 10개의 구구단 문제를 던집니다! 10문제를 완파하여 마왕을 봉인하세요.<br>
+                <small>⏱️ 시간 제한 없이 10문제를 완주하는 데 걸리는 최단 기록을 측정합니다! (틀릴 경우 정답을 맞힐 때까지 경과 시간이 계속 누적됩니다)</small>
               </p>
               <div class="boss-requirements">
                 <span class="req-item">🪙 필요 골드: <strong>100 Gold</strong></span>
-                <span class="req-item">⏱️ 제한시간: <strong>타임어택</strong></span>
-                <span class="req-item">⚔️ 클리어 조건: <strong>10문제 정답</strong></span>
+                <span class="req-item">⏱️ 클리어 조건: <strong>10문제 정답 완주 (타임 측정)</strong></span>
+                <span class="req-item">⚔️ 보상: <strong>영웅의 전당 명예의 전당 등록</strong></span>
               </div>
             </div>
             <div class="boss-action">
@@ -237,11 +237,6 @@
               <span>⏱️ 경과 시간:</span>
               <strong id="bossTimerText">0.00초</strong>
             </div>
-          </div>
-
-          <!-- 보스 타임 프로그레스 바 -->
-          <div class="timer-progress-outer boss-progress-outer">
-            <div class="timer-progress-inner boss-progress-inner" id="bossTimerProgress" style="width: 100%;"></div>
           </div>
 
           <!-- 보스 아바타 & 타격 피드백 레이어 -->

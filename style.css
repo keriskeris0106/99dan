@@ -928,6 +928,16 @@ body.in-dungeon {
   border-color: #8B5CF6;
 }
 
+.boss-option-btn.wrong-choice {
+  background: rgba(185, 28, 28, 0.6) !important;
+  border-color: #EF4444 !important;
+  color: #FCA5A5 !important;
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  transform: scale(0.96);
+  box-shadow: none !important;
+}
+
 /* ==========================================================================
    4. Hall of Heroes (영웅의 전당)
    ========================================================================== */
