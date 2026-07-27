@@ -698,7 +698,7 @@ body.in-dungeon {
 .view-section.dungeon-theme {
   background: radial-gradient(circle at top, #2C0B0E 0%, #110A15 80%);
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 16px 20px;
   box-shadow: 0 0 50px rgba(185, 28, 28, 0.25);
   border: 1px solid #7F1D1D;
   color: #FFF;
@@ -713,9 +713,9 @@ body.in-dungeon {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 12px;
 }
 
 .boss-hp-section {
@@ -724,15 +724,15 @@ body.in-dungeon {
 }
 
 .boss-name-tag {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 800;
   color: #FCA5A5;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .hp-bar-outer {
   width: 100%;
-  height: 20px;
+  height: 18px;
   background-color: #450A0A;
   border-radius: var(--radius-full);
   border: 2px solid #991B1B;
@@ -749,31 +749,31 @@ body.in-dungeon {
 .hp-num-text {
   font-size: 0.85rem;
   color: #FECACA;
-  margin-top: 4px;
+  margin-top: 2px;
   text-align: right;
 }
 
 .boss-timer-box {
   background: rgba(0, 0, 0, 0.4);
-  padding: 8px 16px;
+  padding: 6px 14px;
   border-radius: var(--radius-md);
   border: 1px solid #7F1D1D;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
 .boss-visual-zone {
   position: relative;
-  height: 180px;
+  height: 95px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .boss-avatar-large {
-  font-size: 7rem;
-  filter: drop-shadow(0 10px 20px rgba(239, 68, 68, 0.5));
+  font-size: 3.8rem;
+  filter: drop-shadow(0 6px 14px rgba(239, 68, 68, 0.5));
   transition: transform 0.1s ease;
 }
 
@@ -789,7 +789,7 @@ body.in-dungeon {
 
 .floating-damage {
   position: absolute;
-  font-size: 2.2rem;
+  font-size: 2rem;
   font-weight: 900;
   color: #FACC15;
   text-shadow: 0 3px 10px rgba(0,0,0,0.8), 0 0 15px rgba(239, 68, 68, 0.8);
@@ -804,48 +804,54 @@ body.in-dungeon {
 
 .boss-combo-box {
   text-align: center;
-  font-size: 1.4rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #F59E0B;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .boss-question-card {
   background: rgba(127, 29, 29, 0.3);
   border: 2px solid #991B1B;
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 12px 16px;
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 14px;
 }
 
 .boss-q-number {
   color: #FCA5A5;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .boss-q-text, .boss-q-prompt {
-  font-size: 4.5rem !important;
+  font-size: 3.8rem !important;
   font-weight: 900 !important;
   color: #FFFFFF !important;
   text-shadow: 0 4px 18px rgba(0, 0, 0, 0.95), 0 0 24px rgba(239, 68, 68, 0.7);
   letter-spacing: 3px;
-  margin: 12px 0;
-  line-height: 1.2;
+  margin: 4px 0;
+  line-height: 1.15;
 }
 
 @media (max-width: 600px) {
   .boss-q-text, .boss-q-prompt {
-    font-size: 3.2rem !important;
+    font-size: 2.8rem !important;
+  }
+  .boss-avatar-large {
+    font-size: 3rem;
+  }
+  .boss-visual-zone {
+    height: 75px;
   }
 }
 
 .boss-q-sub {
   color: #FECACA;
-  font-size: 1rem;
-  margin-top: 8px;
+  font-size: 0.9rem;
+  margin-top: 4px;
 }
 
 .boss-answers-grid {
