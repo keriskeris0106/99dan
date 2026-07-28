@@ -427,19 +427,24 @@
     listToCompensate.forEach(s => {
       if (!s) return;
       const isTarget = (s.name === '김우영' || (s.id && (s.id.includes('김우영') || s.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))));
-      if (isTarget && !s._kimWooYoungCompensated_v2) {
-        s._kimWooYoungCompensated_v2 = true;
+      if (isTarget) {
+        if (!s.modeData) s.modeData = {};
 
-        const gData = getUserModeData(s, 'gugudan');
-        gData.currentGold = (gData.currentGold || 0) + 2000;
-        gData.totalGold = (gData.totalGold || 0) + 2000;
+        s.modeData.gugudan = {
+          ...(s.modeData.gugudan || {}),
+          currentGold: 75,
+          totalGold: 1000
+        };
 
-        const dData = getUserModeData(s, 'division');
-        dData.currentGold = (dData.currentGold || 0) + 2000;
-        dData.totalGold = (dData.totalGold || 0) + 2000;
+        s.modeData.division = {
+          ...(s.modeData.division || {}),
+          currentGold: 0,
+          totalGold: 0
+        };
 
-        s.currentGold = (s.currentGold || 0) + 2000;
-        s.totalGold = (s.totalGold || 0) + 2000;
+        const activeModeObj = s.modeData[currentMode] || s.modeData.gugudan;
+        s.currentGold = activeModeObj.currentGold;
+        s.totalGold = activeModeObj.totalGold;
 
         syncToFirestore('students', s.id, s);
         count++;
@@ -447,29 +452,32 @@
     });
 
     if (currentUser && (currentUser.name === '김우영' || (currentUser.id && (currentUser.id.includes('김우영') || currentUser.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))))) {
-      if (!currentUser._kimWooYoungCompensated_v2) {
-        currentUser._kimWooYoungCompensated_v2 = true;
+      if (!currentUser.modeData) currentUser.modeData = {};
 
-        const gData = getUserModeData(currentUser, 'gugudan');
-        gData.currentGold = (gData.currentGold || 0) + 2000;
-        gData.totalGold = (gData.totalGold || 0) + 2000;
+      currentUser.modeData.gugudan = {
+        ...(currentUser.modeData.gugudan || {}),
+        currentGold: 75,
+        totalGold: 1000
+      };
 
-        const dData = getUserModeData(currentUser, 'division');
-        dData.currentGold = (dData.currentGold || 0) + 2000;
-        dData.totalGold = (dData.totalGold || 0) + 2000;
+      currentUser.modeData.division = {
+        ...(currentUser.modeData.division || {}),
+        currentGold: 0,
+        totalGold: 0
+      };
 
-        currentUser.currentGold = (currentUser.currentGold || 0) + 2000;
-        currentUser.totalGold = (currentUser.totalGold || 0) + 2000;
+      const activeModeObj = currentUser.modeData[currentMode] || currentUser.modeData.gugudan;
+      currentUser.currentGold = activeModeObj.currentGold;
+      currentUser.totalGold = activeModeObj.totalGold;
 
-        saveSessionUser(currentUser);
-        syncToFirestore('students', currentUser.id, currentUser);
-        updateHeaderUI();
-      }
+      saveSessionUser(currentUser);
+      syncToFirestore('students', currentUser.id, currentUser);
+      updateHeaderUI();
     }
 
     if (count > 0) {
       saveStorageData();
-      console.log(`💰 [Compensation] 2,000 Gold successfully restored to 김우영 (111111)`);
+      console.log(`💰 [Data Sync] Set 김우영 (111111) Gold: Gugudan (75/1000), Division (0/0)`);
     }
   }
 
@@ -1214,7 +1222,7 @@
 
       actions.innerHTML = `
         <button type="button" class="btn btn-outline" id="bossCancelBtn">취소</button>
-        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn" style="line-height: 1.35;">네,<br>던전에 입장합니다.</button>
+        <button type="button" class="btn btn-boss-start" id="bossRealEnterBtn">네, 던전에 입장합니다</button>
       `;
       openModal('bossConfirmModal');
 

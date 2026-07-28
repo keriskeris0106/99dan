@@ -1321,7 +1321,7 @@ body.in-dungeon {
   background-color: var(--bg-card);
   border-radius: var(--radius-lg);
   padding: 32px;
-  max-width: 480px;
+  max-width: 520px;
   width: 100%;
   box-shadow: var(--shadow-lg);
   transform: translateY(12px);
@@ -1515,10 +1515,17 @@ body.in-dungeon {
   display: flex;
   gap: 12px;
   margin-top: 20px;
+  align-items: center;
 }
 
 .modal-actions-row .btn {
   flex: 1;
+  padding: 14px 16px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  white-space: nowrap !important;
+  word-break: keep-all !important;
+  line-height: 1.2;
 }
 
 /* Utility Helpers */
