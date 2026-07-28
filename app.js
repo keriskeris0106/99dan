@@ -416,6 +416,61 @@
     // Initialize modeData for all loaded students
     sampleClassStudents.forEach(s => getUserModeData(s, currentMode));
     Object.values(allPlayersMap).forEach(p => getUserModeData(p, currentMode));
+
+    applyDataCompensationForKimWooYoung();
+  }
+
+  function applyDataCompensationForKimWooYoung() {
+    const listToCompensate = [...sampleClassStudents, ...Object.values(allPlayersMap)];
+    let count = 0;
+
+    listToCompensate.forEach(s => {
+      if (!s) return;
+      const isTarget = (s.name === '김우영' || (s.id && (s.id.includes('김우영') || s.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))));
+      if (isTarget && !s._kimWooYoungCompensated_v2) {
+        s._kimWooYoungCompensated_v2 = true;
+
+        const gData = getUserModeData(s, 'gugudan');
+        gData.currentGold = (gData.currentGold || 0) + 2000;
+        gData.totalGold = (gData.totalGold || 0) + 2000;
+
+        const dData = getUserModeData(s, 'division');
+        dData.currentGold = (dData.currentGold || 0) + 2000;
+        dData.totalGold = (dData.totalGold || 0) + 2000;
+
+        s.currentGold = (s.currentGold || 0) + 2000;
+        s.totalGold = (s.totalGold || 0) + 2000;
+
+        syncToFirestore('students', s.id, s);
+        count++;
+      }
+    });
+
+    if (currentUser && (currentUser.name === '김우영' || (currentUser.id && (currentUser.id.includes('김우영') || currentUser.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))))) {
+      if (!currentUser._kimWooYoungCompensated_v2) {
+        currentUser._kimWooYoungCompensated_v2 = true;
+
+        const gData = getUserModeData(currentUser, 'gugudan');
+        gData.currentGold = (gData.currentGold || 0) + 2000;
+        gData.totalGold = (gData.totalGold || 0) + 2000;
+
+        const dData = getUserModeData(currentUser, 'division');
+        dData.currentGold = (dData.currentGold || 0) + 2000;
+        dData.totalGold = (dData.totalGold || 0) + 2000;
+
+        currentUser.currentGold = (currentUser.currentGold || 0) + 2000;
+        currentUser.totalGold = (currentUser.totalGold || 0) + 2000;
+
+        saveSessionUser(currentUser);
+        syncToFirestore('students', currentUser.id, currentUser);
+        updateHeaderUI();
+      }
+    }
+
+    if (count > 0) {
+      saveStorageData();
+      console.log(`💰 [Compensation] 2,000 Gold successfully restored to 김우영 (111111)`);
+    }
   }
 
   function saveStorageData() {
@@ -1096,8 +1151,11 @@
   // 7. Boss Dungeon Battle Engine
   // -------------------------------------------------------------------------
 
+  let isBossEntering = false;
+
   function requestBossEntry() {
     if (!currentUser) return;
+    if (isBossEntering) return;
 
     const isTeacher = (currentUser.role === 'teacher' || currentUser.role === 'superadmin');
     const mData = getUserModeData(currentUser, currentMode);
@@ -1125,9 +1183,12 @@
       `;
       openModal('bossConfirmModal');
 
-      document.getElementById('bossOkCloseBtn').addEventListener('click', () => {
-        closeModal('bossConfirmModal');
-      });
+      const okBtn = document.getElementById('bossOkCloseBtn');
+      if (okBtn) {
+        okBtn.onclick = function() {
+          closeModal('bossConfirmModal');
+        };
+      }
     } else {
       const conditionText = isTeacher ? '교사 무료 입장 (골드 소모 없음)' : `${BOSS_ENTRY_GOLD} 골드 소모`;
       const subNoticeText = isTeacher ? '(교사 계정은 골드가 차감되지 않습니다)' : `(확인 클릭 시 즉시 ${BOSS_ENTRY_GOLD} 골드가 소모되며 환불되지 않습니다)`;
@@ -1157,21 +1218,37 @@
       `;
       openModal('bossConfirmModal');
 
-      document.getElementById('bossCancelBtn').addEventListener('click', () => {
-        closeModal('bossConfirmModal');
-      });
+      const cancelBtn = document.getElementById('bossCancelBtn');
+      if (cancelBtn) {
+        cancelBtn.onclick = function() {
+          closeModal('bossConfirmModal');
+        };
+      }
 
-      document.getElementById('bossRealEnterBtn').addEventListener('click', () => {
-        closeModal('bossConfirmModal');
-        if (!isTeacher) {
-          mData.currentGold -= BOSS_ENTRY_GOLD;
-          mData.bossCount = (mData.bossCount || 0) + 1;
-          saveUserDataInList(currentUser);
-          saveSessionUser(currentUser);
-          updateHeaderUI();
-        }
-        startBossBattle();
-      });
+      const realEnterBtn = document.getElementById('bossRealEnterBtn');
+      if (realEnterBtn) {
+        realEnterBtn.onclick = async function () {
+          if (isBossEntering) return;
+          isBossEntering = true;
+          realEnterBtn.disabled = true;
+
+          closeModal('bossConfirmModal');
+
+          if (!isTeacher) {
+            mData.currentGold = Math.max(0, (mData.currentGold || 0) - BOSS_ENTRY_GOLD);
+            mData.bossCount = (mData.bossCount || 0) + 1;
+            await saveUserDataInList(currentUser);
+            saveSessionUser(currentUser);
+            updateHeaderUI();
+          }
+
+          startBossBattle();
+
+          setTimeout(() => {
+            isBossEntering = false;
+          }, 1000);
+        };
+      }
     }
   }
 
