@@ -495,31 +495,29 @@
         <button type="submit" class="btn btn-primary btn-block">🚀 학생으로 접속하기</button>
       </form>
 
-      <!-- (2) 100% 무결점 6자리 학급 코드 전용 교사 개설/접속 폼 -->
+      <!-- (2) 교사 전용 학급 접속 및 개설 폼 -->
       <form id="teacherLoginForm" class="login-form-content">
         <div style="text-align: center; padding: 20px 14px; background-color: var(--bg-elevated); border-radius: var(--radius-md); margin-bottom: 18px; border: 1px solid var(--border-color);">
           <div style="font-size: 2.2rem; margin-bottom: 6px;">👩‍🏫</div>
           <h3 style="font-size: 1.15rem; color: var(--text-main); font-weight: 800; margin-bottom: 4px;">
-            교사 학급 코드 개설 & 관리 접속
+            교사 학급 접속 및 개설
           </h3>
           <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
-            선생님께서 사용할 6자리 숫자를 입력하시면 1초 만에 클래스가 생성되거나 기존 학반 관리 페이지에 즉시 접속됩니다!
+            6자리 학급 코드를 입력하여 기존 클래스 관리 페이지에 접속하거나 신규 학급을 개설해 주세요.
           </p>
         </div>
 
         <div class="form-group">
-          <label for="teacherCodeInput">6자리 학급 코드 (학급코드는 꼭 기억해주세요)</label>
-          <input type="text" id="teacherCodeInput" placeholder="예: 306001 (숫자 6자리)" maxlength="6" pattern="[0-9]*" inputmode="numeric" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
-          <div id="teacherCodeWarning" class="code-warning-red hidden">⚠️ 이미 개설된 학급 코드입니다. (선생님 본인이시면 계속 접속하세요)</div>
+          <label for="teacherCodeInput">6자리 학급 코드 (학급코드는 꼭 기억해 주세요)</label>
+          <input type="text" id="teacherCodeInput" placeholder="예: 363636" maxlength="6" pattern="[0-9]*" inputmode="numeric" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
+          <div id="teacherCodeWarning" class="code-warning-red hidden">⛔ 이미 등록된 학급 코드입니다. (선생님 본인이시면 접속하기를 누르세요)</div>
         </div>
 
-        <div class="form-group">
-          <label for="teacherNameInput">선생님 닉네임 (관리 페이지에서 변경 가능)</label>
-          <input type="text" id="teacherNameInput" placeholder="예: 박선생님" style="font-size: 1rem; padding: 10px 12px;">
-        </div>
-
-        <button type="submit" id="teacherCodeLoginBtn" class="btn btn-primary btn-block" style="font-size: 1.1rem; padding: 13px 16px;">
-          🚀 학급 개설 / 관리 페이지 접속
+        <button type="submit" id="teacherLoginBtn" class="btn btn-primary btn-block" style="font-size: 1.05rem; padding: 13px 16px;">
+          🚀 클래스 관리 접속하기
+        </button>
+        <button type="button" id="openCreateClassModalBtn" class="btn btn-outline btn-block" style="margin-top: 10px; font-size: 1rem; padding: 11px 16px;">
+          🏫 신규 학급 개설하기
         </button>
       </form>
 
@@ -539,24 +537,116 @@
   </div>
 
 
-  <!-- 2. 교사 클래스 이름 설정 모달 -->
+  <!-- 2. 신규 학급 개설 모달 -->
+  <div class="modal-backdrop" id="createClassModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>🏫 신규 학급 개설하기</h2>
+        <p>사용하실 6자리 학급 코드와 클래스 정보를 설정해주세요.</p>
+      </div>
+      <form id="createClassForm">
+        <div class="form-group">
+          <label for="createCodeInput">6자리 학급 코드 (학급코드는 꼭 기억해 주세요)</label>
+          <input type="text" id="createCodeInput" placeholder="예: 363636" maxlength="6" pattern="[0-9]*" inputmode="numeric" required style="font-size: 1.1rem; padding: 12px 14px; text-align: center; letter-spacing: 2px; font-weight: 800; color: var(--accent-purple);">
+          <div id="createCodeWarning" class="code-warning-red hidden">⛔ 이미 사용 중인 학급 코드입니다. 다른 코드를 입력해 주세요.</div>
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="createGradeSelect">학년 선택</label>
+            <select id="createGradeSelect" style="width: 100%; padding: 10px 12px; font-size: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-main);">
+              <option value="1학년">1학년</option>
+              <option value="2학년">2학년</option>
+              <option value="3학년" selected>3학년</option>
+              <option value="4학년">4학년</option>
+              <option value="5학년">5학년</option>
+              <option value="6학년">6학년</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="createClassNumSelect">반 선택</label>
+            <select id="createClassNumSelect" style="width: 100%; padding: 10px 12px; font-size: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-main);">
+              <option value="1반" selected>1반</option>
+              <option value="2반">2반</option>
+              <option value="3반">3반</option>
+              <option value="4반">4반</option>
+              <option value="5반">5반</option>
+              <option value="6반">6반</option>
+              <option value="7반">7반</option>
+              <option value="8반">8반</option>
+              <option value="9반">9반</option>
+              <option value="10반">10반</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="createClassNameInput">클래스 이름</label>
+          <input type="text" id="createClassNameInput" placeholder="예: 3학년 긍정열정반" required style="font-size: 1.05rem; padding: 10px 12px;">
+        </div>
+
+        <div class="form-group">
+          <label for="createTeacherNameInput">선생님 닉네임</label>
+          <input type="text" id="createTeacherNameInput" placeholder="예: 박선생님" required style="font-size: 1.05rem; padding: 10px 12px;">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" id="closeCreateClassModalBtn">취소</button>
+          <button type="submit" class="btn btn-primary">✨ 학급 개설하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- 3. 교사 클래스 정보 변경 모달 -->
   <div class="modal-backdrop" id="classConfigModal">
     <div class="modal-card">
       <div class="modal-header">
         <h2>✏️ 학반 정보 & 선생님 닉네임 변경</h2>
-        <p>우리 반 클래스 이름과 선생님 닉네임을 설정해주세요.</p>
+        <p>클래스 이름과 선생님 닉네임을 변경합니다. (학급 코드는 변경 불가)</p>
       </div>
       <form id="classConfigForm">
         <div class="form-group">
-          <label for="editTeacherNameInput">선생님 닉네임 (예: 박선생님)</label>
-          <input type="text" id="editTeacherNameInput" placeholder="예: 박선생님" required style="font-size: 1.05rem; padding: 10px 12px; margin-bottom: 12px;">
+          <label for="editClassCodeInput">6자리 학급 코드 (변경 불가)</label>
+          <input type="text" id="editClassCodeInput" disabled readonly style="font-size: 1.05rem; padding: 10px 12px; background-color: var(--bg-elevated); cursor: not-allowed; font-weight: 800; color: var(--text-muted);">
+          <small style="color: var(--text-muted); margin-top: 4px; display: block;">⚠️ 학급 코드는 절대 변경할 수 없습니다.</small>
+        </div>
+        <div style="display: flex; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="editGradeSelect">학년 선택</label>
+            <select id="editGradeSelect" style="width: 100%; padding: 10px 12px; font-size: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-main);">
+              <option value="1학년">1학년</option>
+              <option value="2학년">2학년</option>
+              <option value="3학년">3학년</option>
+              <option value="4학년">4학년</option>
+              <option value="5학년">5학년</option>
+              <option value="6학년">6학년</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="editClassNumSelect">반 선택</label>
+            <select id="editClassNumSelect" style="width: 100%; padding: 10px 12px; font-size: 1rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background-color: var(--bg-card); color: var(--text-main);">
+              <option value="1반">1반</option>
+              <option value="2반">2반</option>
+              <option value="3반">3반</option>
+              <option value="4반">4반</option>
+              <option value="5반">5반</option>
+              <option value="6반">6반</option>
+              <option value="7반">7반</option>
+              <option value="8반">8반</option>
+              <option value="9반">9반</option>
+              <option value="10반">10반</option>
+            </select>
+          </div>
         </div>
         <div class="form-group">
-          <label for="editClassNameInput">클래스 이름 (예: 3-6 또는 꿈나무 3-6)</label>
-          <input type="text" id="editClassNameInput" placeholder="예: 3-6" required style="font-size: 1.1rem; padding: 12px 14px;">
-          <small style="color: var(--text-muted); margin-top: 6px; display: block;">
-            💡 입력하신 클래스 이름이 학생들의 정보 및 영웅의 전당에 즉시 동기화됩니다.
-          </small>
+          <label for="editClassNameInput">클래스 이름 (예: 3학년 긍정열정반)</label>
+          <input type="text" id="editClassNameInput" placeholder="예: 3학년 긍정열정반" required style="font-size: 1.05rem; padding: 10px 12px;">
+        </div>
+        <div class="form-group">
+          <label for="editTeacherNameInput">선생님 닉네임 (예: 박선생님)</label>
+          <input type="text" id="editTeacherNameInput" placeholder="예: 박선생님" required style="font-size: 1.05rem; padding: 10px 12px;">
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline" id="closeClassConfigModalBtn">취소</button>

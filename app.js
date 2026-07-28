@@ -1638,12 +1638,28 @@
   // 9. 6-Digit Class Code Teacher Access Logic & Admin Page
   // -------------------------------------------------------------------------
 
-  async function loginTeacherByClassCode(inviteCode, teacherCustomName = '') {
+  async function checkClassCodeExists(cleanCode) {
+    if (registeredClasses[cleanCode]) return true;
+    if (db) {
+      try {
+        const docSnap = await db.collection('classes').doc(cleanCode).get();
+        if (docSnap.exists) {
+          registeredClasses[cleanCode] = docSnap.data();
+          return true;
+        }
+      } catch (e) {
+        console.warn("Firestore class check error:", e);
+      }
+    }
+    return false;
+  }
+
+  async function loginTeacherByClassCode(inviteCode) {
     const cleanCode = inviteCode.replace(/[^0-9]/g, '').trim();
 
     if (!cleanCode || cleanCode.length !== 6) {
       alert('올바른 6자리 숫자 학급 코드를 입력해 주세요.');
-      return;
+      return false;
     }
 
     isLoggingInProgress = true;
@@ -1651,7 +1667,7 @@
 
     let teacherRecord = registeredClasses[cleanCode];
 
-    if (db) {
+    if (!teacherRecord && db) {
       try {
         const docSnap = await db.collection('classes').doc(cleanCode).get();
         if (docSnap.exists) {
@@ -1662,28 +1678,17 @@
       }
     }
 
-    const tName = teacherCustomName.trim() || (teacherRecord && teacherRecord.teacherName) || `선생님(${cleanCode})`;
-
     if (!teacherRecord) {
-      teacherRecord = {
-        inviteCode: cleanCode,
-        teacherName: tName,
-        className: '',
-        createdAt: Date.now(),
-        updatedAt: Date.now()
-      };
-    } else {
-      if (teacherCustomName.trim()) teacherRecord.teacherName = teacherCustomName.trim();
-      teacherRecord.updatedAt = Date.now();
+      isLoggingInProgress = false;
+      alert(`⛔ [${cleanCode}]는 등록되지 않은 학급 코드입니다.\n\n아래 [🏫 신규 학급 개설하기] 버튼을 눌러 먼저 학급을 개설해 주세요.`);
+      return false;
     }
 
     registeredClasses[cleanCode] = teacherRecord;
-    await syncToFirestore('classes', cleanCode, teacherRecord);
-    saveStorageData();
 
     const teacherUser = {
       id: `teacher_${cleanCode}`,
-      name: teacherRecord.teacherName,
+      name: teacherRecord.teacherName || `선생님(${cleanCode})`,
       role: 'teacher',
       inviteCode: cleanCode,
       className: teacherRecord.className || '',
@@ -1700,6 +1705,7 @@
     updateHeaderUI();
 
     showView('adminView');
+    return true;
   }
 
   function updateTeacherDashboardUI() {
@@ -2071,40 +2077,174 @@
     const teacherCodeWarning = document.getElementById('teacherCodeWarning');
 
     if (teacherCodeInput) {
-      teacherCodeInput.addEventListener('input', (e) => {
+      teacherCodeInput.addEventListener('input', async (e) => {
         e.target.value = e.target.value.replace(/[^0-9]/g, '');
 
         const val = e.target.value.trim();
-        if (val.length === 6 && registeredClasses[val]) {
-          teacherCodeWarning.classList.remove('hidden');
+        if (val.length === 6) {
+          const exists = await checkClassCodeExists(val);
+          if (exists) {
+            teacherCodeWarning.textContent = 'ℹ️ 등록된 학급 코드입니다. 접속하기 버튼을 누르시면 바로 관리 페이지로 들어갑니다.';
+            teacherCodeWarning.classList.remove('hidden');
+          } else {
+            teacherCodeWarning.textContent = '⛔ 아직 등록되지 않은 학급 코드입니다. 아래 [🏫 신규 학급 개설하기]를 누르세요.';
+            teacherCodeWarning.classList.remove('hidden');
+          }
         } else {
           teacherCodeWarning.classList.add('hidden');
         }
       });
     }
 
-    // 6-Digit Class Code Teacher Access Submit Handler
+    // 6-Digit Class Code Teacher Login Handler
     const teacherLoginForm = document.getElementById('teacherLoginForm');
     if (teacherLoginForm) {
       teacherLoginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const code = document.getElementById('teacherCodeInput').value.trim();
-        const tName = document.getElementById('teacherNameInput').value.trim();
+        const code = document.getElementById('teacherCodeInput').value.replace(/[^0-9]/g, '').trim();
 
         if (!code || code.length !== 6) {
           alert('6자리 숫자 학급 코드를 입력해 주세요.');
           return;
         }
 
-        await loginTeacherByClassCode(code, tName);
+        const exists = await checkClassCodeExists(code);
+        if (!exists) {
+          teacherCodeWarning.textContent = '⛔ 등록되지 않은 학급 코드입니다. 아래 [🏫 신규 학급 개설하기] 버튼을 누르세요.';
+          teacherCodeWarning.classList.remove('hidden');
+          alert(`⛔ [${code}]는 등록되지 않은 학급 코드입니다.\n\n아래 [🏫 신규 학급 개설하기] 버튼을 눌러 학급을 개설해 주세요.`);
+          return;
+        }
+
+        await loginTeacherByClassCode(code);
       });
     }
 
-    // Teacher Class Settings Modal Edit Handlers
+    // Open New Class Creation Modal Handler
+    const openCreateBtn = document.getElementById('openCreateClassModalBtn');
+    if (openCreateBtn) {
+      openCreateBtn.addEventListener('click', () => {
+        const codeInMain = document.getElementById('teacherCodeInput').value.replace(/[^0-9]/g, '').trim();
+        const createCodeInput = document.getElementById('createCodeInput');
+        if (codeInMain.length === 6) {
+          createCodeInput.value = codeInMain;
+        } else {
+          createCodeInput.value = '';
+        }
+        document.getElementById('createCodeWarning').classList.add('hidden');
+        openModal('createClassModal');
+      });
+    }
+
+    const closeCreateBtn = document.getElementById('closeCreateClassModalBtn');
+    if (closeCreateBtn) {
+      closeCreateBtn.addEventListener('click', () => {
+        closeModal('createClassModal');
+      });
+    }
+
+    // Input Listener for Create Class Code Field
+    const createCodeInput = document.getElementById('createCodeInput');
+    const createCodeWarning = document.getElementById('createCodeWarning');
+    if (createCodeInput) {
+      createCodeInput.addEventListener('input', async (e) => {
+        e.target.value = e.target.value.replace(/[^0-9]/g, '');
+
+        const val = e.target.value.trim();
+        if (val.length === 6) {
+          const exists = await checkClassCodeExists(val);
+          if (exists) {
+            createCodeWarning.textContent = '⛔ 이미 사용 중인 학급 코드입니다. 다른 6자리 코드를 입력해 주세요.';
+            createCodeWarning.classList.remove('hidden');
+          } else {
+            createCodeWarning.classList.add('hidden');
+          }
+        } else {
+          createCodeWarning.classList.add('hidden');
+        }
+      });
+    }
+
+    // Submit New Class Creation Form
+    const createClassForm = document.getElementById('createClassForm');
+    if (createClassForm) {
+      createClassForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const code = document.getElementById('createCodeInput').value.replace(/[^0-9]/g, '').trim();
+        const grade = document.getElementById('createGradeSelect').value;
+        const classNum = document.getElementById('createClassNumSelect').value;
+        const className = document.getElementById('createClassNameInput').value.trim();
+        const teacherName = document.getElementById('createTeacherNameInput').value.trim();
+
+        if (!code || code.length !== 6) {
+          alert('올바른 6자리 숫자 학급 코드를 입력해 주세요.');
+          return;
+        }
+
+        if (!className) {
+          alert('클래스 이름을 입력해 주세요.');
+          return;
+        }
+
+        if (!teacherName) {
+          alert('선생님 닉네임을 입력해 주세요.');
+          return;
+        }
+
+        const exists = await checkClassCodeExists(code);
+        if (exists) {
+          createCodeWarning.textContent = '⛔ 이미 사용 중인 학급 코드입니다. 다른 6자리 코드를 입력해 주세요.';
+          createCodeWarning.classList.remove('hidden');
+          alert(`⛔ [${code}] 학급 코드는 이미 사용 중입니다.\n\n다른 6자리 코드를 입력해 주세요.`);
+          return;
+        }
+
+        createCodeWarning.classList.add('hidden');
+        await ensureFirebaseAuth();
+
+        const newClassRecord = {
+          inviteCode: code,
+          grade: grade,
+          classNum: classNum,
+          className: className,
+          teacherName: teacherName,
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        };
+
+        registeredClasses[code] = newClassRecord;
+        await syncToFirestore('classes', code, newClassRecord);
+        saveStorageData();
+
+        const teacherUser = {
+          id: `teacher_${code}`,
+          name: teacherName,
+          role: 'teacher',
+          inviteCode: code,
+          className: className,
+          titleIndex: 5,
+          totalGold: 999,
+          currentGold: 999
+        };
+
+        saveSessionUser(teacherUser);
+        updateTeacherDashboardUI();
+
+        closeModal('createClassModal');
+        closeModal('loginModal');
+        updateHeaderUI();
+        showView('adminView');
+
+        alert(`🎉 신규 학급 [${className}] (코드: ${code}) 개설이 완료되었습니다!`);
+      });
+    }
+
+    // Teacher Class Settings Modal Handlers
     const editClassBtn = document.getElementById('editClassSettingsBtn');
     if (editClassBtn) {
       editClassBtn.addEventListener('click', () => {
         if (!currentUser) return;
+        document.getElementById('editClassCodeInput').value = currentUser.inviteCode || '';
         document.getElementById('editClassNameInput').value = currentUser.className || '';
         document.getElementById('editTeacherNameInput').value = currentUser.name || '';
         openModal('classConfigModal');
@@ -2115,13 +2255,15 @@
       closeModal('classConfigModal');
     });
 
-    // Submit Teacher Class Name Configuration
+    // Submit Teacher Class Configuration Change
     document.getElementById('classConfigForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!currentUser || (currentUser.role !== 'teacher' && currentUser.role !== 'superadmin')) return;
 
       const customClassName = document.getElementById('editClassNameInput').value.trim();
       const customTeacherName = document.getElementById('editTeacherNameInput').value.trim();
+      const grade = document.getElementById('editGradeSelect').value;
+      const classNum = document.getElementById('editClassNumSelect').value;
 
       if (!customClassName) {
         alert('클래스 이름을 입력해 주세요.');
@@ -2138,10 +2280,13 @@
       currentUser.className = customClassName;
       currentUser.name = customTeacherName;
 
-      const code = currentUser.inviteCode;
+      const code = currentUser.inviteCode; // Code is readonly & immutable!
       const classRecord = {
+        ...(registeredClasses[code] || {}),
         className: customClassName,
         teacherName: customTeacherName,
+        grade: grade,
+        classNum: classNum,
         inviteCode: code,
         updatedAt: Date.now()
       };
