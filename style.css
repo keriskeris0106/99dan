@@ -1528,6 +1528,13 @@ body.in-dungeon {
   line-height: 1.2;
 }
 
+/* Global Zero Horizontal Overflow Safeguard */
+html, body {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  box-sizing: border-box !important;
+}
+
 /* Utility Helpers */
 .hidden { display: none !important; }
 .text-center { text-align: center; }
@@ -1536,15 +1543,13 @@ body.in-dungeon {
 /* 📱 Mobile Portrait Optimized Responsive Layouts (@media max-width: 768px) */
 /* ------------------------------------------------------------------------- */
 
-/* ------------------------------------------------------------------------- */
-/* 📱 Mobile Portrait Optimized Responsive Layouts (@media max-width: 768px) */
-/* ------------------------------------------------------------------------- */
-
 @media screen and (max-width: 768px) {
   /* Main App Container */
   .app-container {
-    padding: 10px 8px;
-    max-width: 100vw;
+    padding: 8px 6px;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box !important;
   }
 
   /* Main Header Structure */
@@ -1554,6 +1559,8 @@ body.in-dungeon {
     gap: 8px;
     padding: 10px;
     border-radius: var(--radius-md);
+    width: 100% !important;
+    box-sizing: border-box !important;
   }
 
   .logo-title {
@@ -1573,6 +1580,7 @@ body.in-dungeon {
     background-color: var(--bg-elevated);
     padding: 3px;
     border-radius: 24px;
+    box-sizing: border-box;
   }
 
   .mode-tab-btn {
@@ -1593,6 +1601,7 @@ body.in-dungeon {
     align-items: center;
     justify-content: space-between;
     gap: 6px;
+    box-sizing: border-box;
   }
 
   .user-badge-container {
@@ -1608,6 +1617,7 @@ body.in-dungeon {
     font-size: 0.8rem;
     white-space: nowrap;
     border-radius: 12px;
+    flex-shrink: 0;
   }
 
   .user-name-tag {
@@ -1616,7 +1626,7 @@ body.in-dungeon {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 130px;
+    max-width: 120px;
   }
 
   .user-role-badge {
@@ -1630,23 +1640,26 @@ body.in-dungeon {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 6px;
+    gap: 4px;
     padding-top: 6px;
     border-top: 1px dashed var(--border-color);
+    box-sizing: border-box;
   }
 
   .gold-display {
-    font-size: 0.9rem;
+    font-size: 0.88rem;
     font-weight: 900;
     white-space: nowrap;
-    padding: 4px 10px;
+    padding: 4px 8px;
     border-radius: 14px;
+    flex-shrink: 0;
   }
 
   .header-right .btn, .header-right .icon-btn {
-    padding: 6px 10px;
-    font-size: 0.82rem;
+    padding: 6px 8px;
+    font-size: 0.8rem;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   /* Mini-Game View Header & Stats Bar */
@@ -1656,6 +1669,8 @@ body.in-dungeon {
     gap: 8px;
     padding: 10px;
     align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .game-title-info {
@@ -1679,6 +1694,7 @@ body.in-dungeon {
     padding: 8px 6px;
     border-radius: var(--radius-md);
     width: 100%;
+    box-sizing: border-box;
   }
 
   .stat-pill {
@@ -1731,6 +1747,8 @@ body.in-dungeon {
     flex-direction: column;
     gap: 8px;
     padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .boss-name-tag {
@@ -1800,6 +1818,72 @@ body.in-dungeon {
     padding: 12px 8px;
   }
 
+  /* 🏆 Hall of Heroes Mobile Optimized Layout */
+  .hall-container {
+    padding: 10px 4px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .hall-header h2 {
+    font-size: 1.35rem !important;
+  }
+
+  .hall-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .hall-tab-btn {
+    padding: 8px 4px;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    text-align: center;
+    border-radius: 16px;
+  }
+
+  .rank-table, .mini-rank-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    margin-bottom: 10px;
+  }
+
+  .rank-table th, .rank-table td,
+  .mini-rank-table th, .mini-rank-table td {
+    padding: 10px 4px !important;
+    font-size: 0.84rem !important;
+  }
+
+  /* Hide redundant '구분' column on mobile to fit 100% width cleanly */
+  .col-role {
+    display: none !important;
+  }
+
+  .rank-table th:nth-child(1) { width: 24% !important; }
+  .rank-table th:nth-child(2) { width: 48% !important; }
+  .rank-table th:nth-child(4) { width: 28% !important; }
+
+  .rank-table td:nth-child(2), .mini-rank-table td:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .triple-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+  }
+
+  .mini-rank-column {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
   /* Responsive Tables */
   .table-responsive-wrapper {
     width: 100%;
@@ -1808,7 +1892,7 @@ body.in-dungeon {
     margin-bottom: 12px;
   }
 
-  .admin-table, .hall-table {
-    min-width: 580px;
+  .admin-table {
+    min-width: 560px;
   }
 }

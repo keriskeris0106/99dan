@@ -1553,7 +1553,7 @@
         tr.innerHTML = `
           <td class="${rankStyle}"><strong>${item.rankDisplay}</strong></td>
           <td>${getFullUserTitleString(u, currentMode)} ${isMyRow ? '📍 (나)' : ''}</td>
-          <td>${u.role === 'anon' ? '익명' : '학생'}</td>
+          <td class="col-role">${u.role === 'anon' ? '익명' : '학생'}</td>
           <td><strong>${scoreStr}</strong></td>
         `;
         tbody.appendChild(tr);
