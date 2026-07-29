@@ -427,7 +427,8 @@
     listToCompensate.forEach(s => {
       if (!s) return;
       const isTarget = (s.name === '김우영' || (s.id && (s.id.includes('김우영') || s.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))));
-      if (isTarget) {
+      if (isTarget && !s._kimWooYoungCompensated_v5) {
+        s._kimWooYoungCompensated_v5 = true;
         if (!s.modeData) s.modeData = {};
 
         s.modeData.gugudan = {
@@ -452,32 +453,35 @@
     });
 
     if (currentUser && (currentUser.name === '김우영' || (currentUser.id && (currentUser.id.includes('김우영') || currentUser.id.includes('%EA%B9%80%EC%9A%B0%EC%98%81'))))) {
-      if (!currentUser.modeData) currentUser.modeData = {};
+      if (!currentUser._kimWooYoungCompensated_v5) {
+        currentUser._kimWooYoungCompensated_v5 = true;
+        if (!currentUser.modeData) currentUser.modeData = {};
 
-      currentUser.modeData.gugudan = {
-        ...(currentUser.modeData.gugudan || {}),
-        currentGold: 75,
-        totalGold: 1000
-      };
+        currentUser.modeData.gugudan = {
+          ...(currentUser.modeData.gugudan || {}),
+          currentGold: 75,
+          totalGold: 1000
+        };
 
-      currentUser.modeData.division = {
-        ...(currentUser.modeData.division || {}),
-        currentGold: 0,
-        totalGold: 0
-      };
+        currentUser.modeData.division = {
+          ...(currentUser.modeData.division || {}),
+          currentGold: 0,
+          totalGold: 0
+        };
 
-      const activeModeObj = currentUser.modeData[currentMode] || currentUser.modeData.gugudan;
-      currentUser.currentGold = activeModeObj.currentGold;
-      currentUser.totalGold = activeModeObj.totalGold;
+        const activeModeObj = currentUser.modeData[currentMode] || currentUser.modeData.gugudan;
+        currentUser.currentGold = activeModeObj.currentGold;
+        currentUser.totalGold = activeModeObj.totalGold;
 
-      saveSessionUser(currentUser);
-      syncToFirestore('students', currentUser.id, currentUser);
-      updateHeaderUI();
+        saveSessionUser(currentUser);
+        syncToFirestore('students', currentUser.id, currentUser);
+        updateHeaderUI();
+      }
     }
 
     if (count > 0) {
       saveStorageData();
-      console.log(`💰 [Data Sync] Set 김우영 (111111) Gold: Gugudan (75/1000), Division (0/0)`);
+      console.log(`💰 [Data Migration] Initialized 김우영 (111111) base Gold once: Gugudan (75/1000), Division (0/0)`);
     }
   }
 
@@ -1050,6 +1054,11 @@
         checkAndUpdateUserWeeklyReset(currentUser, currentMode);
         mData.weeklySolved = (mData.weeklySolved || 0) + 1;
         mData.totalSolved = (mData.totalSolved || 0) + 1;
+
+        mData.currentGold = (mData.currentGold || 0) + REWARD_GOLD_PER_PROBLEM;
+        mData.totalGold = (mData.totalGold || 0) + REWARD_GOLD_PER_PROBLEM;
+        saveUserDataInList(currentUser);
+        saveSessionUser(currentUser);
       }
 
       updateGameStatsBar();
@@ -1063,6 +1072,7 @@
         const table = gameState.currentQuestion.b || gameState.currentQuestion.a;
         if (!mData.weakTableErrors) mData.weakTableErrors = {};
         mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
+        saveUserDataInList(currentUser);
       }
 
       updateGameStatsBar();
@@ -1100,6 +1110,11 @@
           checkAndUpdateUserWeeklyReset(currentUser, currentMode);
           mData.weeklySolved = (mData.weeklySolved || 0) + 1;
           mData.totalSolved = (mData.totalSolved || 0) + 1;
+
+          mData.currentGold = (mData.currentGold || 0) + REWARD_GOLD_PER_PROBLEM;
+          mData.totalGold = (mData.totalGold || 0) + REWARD_GOLD_PER_PROBLEM;
+          saveUserDataInList(currentUser);
+          saveSessionUser(currentUser);
         }
 
         updateGameStatsBar();
@@ -1117,6 +1132,7 @@
           const table = question.a;
           if (!mData.weakTableErrors) mData.weakTableErrors = {};
           mData.weakTableErrors[table] = (mData.weakTableErrors[table] || 0) + 1;
+          saveUserDataInList(currentUser);
         }
 
         updateGameStatsBar();
@@ -1127,8 +1143,6 @@
   function finishMiniGame() {
     if (currentUser) {
       const mData = getUserModeData(currentUser, currentMode);
-      mData.currentGold = (mData.currentGold || 0) + gameState.earnedGold;
-      mData.totalGold = (mData.totalGold || 0) + gameState.earnedGold;
 
       const todayStr = getTodayKSTDateString();
       if (mData.lastActiveDate !== todayStr) {
