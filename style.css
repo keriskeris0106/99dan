@@ -1536,105 +1536,248 @@ body.in-dungeon {
 /* 📱 Mobile Portrait Optimized Responsive Layouts (@media max-width: 768px) */
 /* ------------------------------------------------------------------------- */
 
+/* ------------------------------------------------------------------------- */
+/* 📱 Mobile Portrait Optimized Responsive Layouts (@media max-width: 768px) */
+/* ------------------------------------------------------------------------- */
+
 @media screen and (max-width: 768px) {
-  /* Main Container & Padding */
+  /* Main App Container */
   .app-container {
-    padding: 12px 10px;
+    padding: 10px 8px;
     max-width: 100vw;
   }
 
-  /* Header & Mode Switcher */
-  .app-header {
+  /* Main Header Structure */
+  .main-header {
+    display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 14px 12px;
-    align-items: stretch;
+    gap: 8px;
+    padding: 10px;
+    border-radius: var(--radius-md);
   }
 
-  .header-mode-switcher {
+  .logo-title {
+    display: none; /* Hide large logo on mobile header to save vertical space */
+  }
+
+  /* Row 1: Mode Switch Tabs (구구단 / 나눗셈) */
+  .header-center {
     width: 100%;
+    order: 1;
+  }
+
+  .mode-tabs-box {
     display: flex;
+    width: 100%;
+    gap: 4px;
+    background-color: var(--bg-elevated);
+    padding: 3px;
+    border-radius: 24px;
+  }
+
+  .mode-tab-btn {
+    flex: 1;
+    padding: 8px 4px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    border-radius: 20px;
+    white-space: nowrap;
+    justify-content: center;
+  }
+
+  /* Row 2: User Title Emoji & Name Tag */
+  .header-left {
+    width: 100%;
+    order: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 6px;
   }
 
-  .mode-switch-btn {
+  .user-badge-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     flex: 1;
-    text-align: center;
-    padding: 10px 8px;
-    font-size: 0.9rem;
+    min-width: 0;
   }
 
-  .header-user-info {
-    justify-content: space-between;
+  .user-title-btn {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-radius: 12px;
+  }
+
+  .user-name-tag {
+    font-size: 0.88rem;
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+  }
+
+  .user-role-badge {
+    display: none;
+  }
+
+  /* Row 3: Gold Display & Nav Action Buttons */
+  .header-right {
     width: 100%;
+    order: 3;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed var(--border-color);
   }
 
-  /* Main Lobby Cards & Buttons */
-  .lobby-grid {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .gold-display {
+    font-size: 0.9rem;
+    font-weight: 900;
+    white-space: nowrap;
+    padding: 4px 10px;
+    border-radius: 14px;
   }
 
-  .game-card {
-    padding: 18px 14px;
+  .header-right .btn, .header-right .icon-btn {
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    white-space: nowrap;
   }
 
-  /* Mini-Game View */
-  .game-header {
+  /* Mini-Game View Header & Stats Bar */
+  .game-header-bar {
+    display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 8px;
+    padding: 10px;
+    align-items: stretch;
+  }
+
+  .game-title-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .game-title-info h2 {
+    font-size: 1.15rem !important;
+    white-space: nowrap;
   }
 
   .game-stats-bar {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 4px;
+    background-color: var(--bg-elevated);
+    padding: 8px 6px;
+    border-radius: var(--radius-md);
     width: 100%;
-    justify-content: space-around;
   }
 
-  .game-q-text {
-    font-size: 2.3rem !important;
+  .stat-pill {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 2px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    text-align: center;
+    border-radius: var(--radius-sm);
   }
 
-  .game-options-grid {
+  .stat-pill span {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+    white-space: nowrap;
+  }
+
+  .stat-pill strong {
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  .question-card {
+    padding: 24px 12px;
+  }
+
+  .question-prompt {
+    font-size: 2.5rem !important;
+  }
+
+  .answer-options-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: 10px;
   }
 
   .option-btn {
-    padding: 16px 10px;
+    padding: 14px 8px;
     font-size: 1.6rem;
-    min-height: 56px;
+    min-height: 54px;
   }
 
-  .game-tiles-grid {
+  /* Boss Arena View Header & Stats */
+  .boss-battle-header {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
+    padding: 10px;
   }
 
-  .tile-btn {
-    padding: 12px 6px;
-    font-size: 1.4rem;
-    min-height: 50px;
+  .boss-name-tag {
+    font-size: 0.92rem;
+    font-weight: 800;
+    margin-bottom: 4px;
   }
 
-  /* Boss Dungeon View */
+  .boss-timer-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+
+  .boss-timer-box strong {
+    color: #FBBF24;
+    font-size: 1.05rem;
+  }
+
   .boss-visual-zone {
-    height: 70px;
+    height: 65px;
   }
 
   .boss-avatar-large {
-    font-size: 2.8rem;
+    font-size: 2.6rem;
   }
 
-  .boss-q-prompt {
+  .boss-question-card {
+    padding: 18px 10px;
+  }
+
+  .boss-q-text {
     font-size: 2.4rem !important;
   }
 
   .boss-answers-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
   .boss-option-btn {
-    padding: 14px 10px;
+    padding: 14px 8px;
     font-size: 1.6rem;
     min-height: 54px;
   }
@@ -1642,8 +1785,8 @@ body.in-dungeon {
   /* Modals & Touch Targets */
   .modal-card {
     width: 95%;
-    max-width: 480px;
-    padding: 20px 14px;
+    max-width: 460px;
+    padding: 18px 12px;
     margin: 10px auto;
   }
 
@@ -1653,11 +1796,11 @@ body.in-dungeon {
   }
 
   .modal-actions-row .btn {
-    font-size: 0.95rem;
-    padding: 12px 10px;
+    font-size: 0.92rem;
+    padding: 12px 8px;
   }
 
-  /* Responsive Tables with Touch Scroll */
+  /* Responsive Tables */
   .table-responsive-wrapper {
     width: 100%;
     overflow-x: auto;
@@ -1666,6 +1809,6 @@ body.in-dungeon {
   }
 
   .admin-table, .hall-table {
-    min-width: 600px;
+    min-width: 580px;
   }
 }
