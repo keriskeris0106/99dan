@@ -45,6 +45,11 @@
   padding: 0;
 }
 
+button, a, input, select, textarea, [role="button"], .stage-card, .mode-tab-btn, .boss-banner-card, .modal-close-btn, .opt-btn, .boss-opt-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body.theme-ivory {
   background-color: var(--bg-primary);
   color: var(--text-main);

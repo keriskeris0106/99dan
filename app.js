@@ -1971,7 +1971,6 @@
     titleHeader.innerHTML = `🏆 ${modeLabel} 칭호 목록 & 획득 조건`;
     container.appendChild(titleHeader);
 
-    const mData = getUserModeData(currentUser, currentMode);
     const currentLevel = mData ? (mData.titleIndex || 0) : 0;
     const titlesList = TITLES_MAP[currentMode] || TITLES_MAP.gugudan;
 
@@ -2480,7 +2479,11 @@
     setMode('gugudan');
   }
 
-  // Run App Initialization on DOM Load
-  document.addEventListener('DOMContentLoaded', initApp);
+  // Run App Initialization on DOM Load or immediately if already loaded
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initApp);
+  } else {
+    initApp();
+  }
 
 })();
