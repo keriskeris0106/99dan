@@ -1500,32 +1500,28 @@ body.in-dungeon {
   text-align: center;
 }
 
-.boss-count-box-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.boss-count-card {
+.boss-count-single-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   background-color: var(--bg-elevated);
-  border: 1px solid var(--border-color);
+  border: 1.5px solid #F59E0B;
   border-radius: var(--radius-sm);
-  padding: 10px 8px;
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.boss-count-card.active {
-  border-color: #F59E0B;
+  padding: 12px 14px;
   background-color: #FFFBEB;
-  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 
-.count-card-label {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-  font-weight: 700;
+.boss-count-single-card .count-card-label {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.boss-count-single-card .count-card-val {
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #D97706;
 }
 
 .count-card-val {
