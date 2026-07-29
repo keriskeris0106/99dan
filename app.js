@@ -1947,6 +1947,36 @@
     const container = document.getElementById('titleListContainer');
     container.innerHTML = '';
 
+    const gData = getUserModeData(currentUser, 'gugudan');
+    const dData = getUserModeData(currentUser, 'division');
+
+    const gBossCount = gData ? (gData.bossCount || 0) : 0;
+    const dBossCount = dData ? (dData.bossCount || 0) : 0;
+
+    // 1. My Boss Count Stats Box
+    const countBox = document.createElement('div');
+    countBox.className = 'my-boss-count-box';
+    countBox.innerHTML = `
+      <div class="boss-count-box-title">📊 나의 누적 보스전 도전 현황</div>
+      <div class="boss-count-box-grid">
+        <div class="boss-count-card ${currentMode === 'gugudan' ? 'active' : ''}">
+          <div class="count-card-label">⚔️ 구구단 보스전</div>
+          <div class="count-card-val">${gBossCount}회 도전</div>
+        </div>
+        <div class="boss-count-card ${currentMode === 'division' ? 'active' : ''}">
+          <div class="count-card-label">➗ 나눗셈 보스전</div>
+          <div class="count-card-val">${dBossCount}회 도전</div>
+        </div>
+      </div>
+    `;
+    container.appendChild(countBox);
+
+    // 2. Title List Section Subhead
+    const titleHeader = document.createElement('div');
+    titleHeader.className = 'title-list-subhead';
+    titleHeader.innerHTML = `🏆 ${currentMode === 'gugudan' ? '구구단' : '나눗셈'} 칭호 목록 & 획득 조건`;
+    container.appendChild(titleHeader);
+
     const mData = getUserModeData(currentUser, currentMode);
     const currentLevel = mData ? (mData.titleIndex || 0) : 0;
     const titlesList = TITLES_MAP[currentMode] || TITLES_MAP.gugudan;

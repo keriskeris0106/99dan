@@ -1483,6 +1483,70 @@ body.in-dungeon {
   color: var(--text-muted);
 }
 
+/* My Boss Count Box in Title Modal */
+.my-boss-count-box {
+  background: linear-gradient(135deg, rgba(76, 29, 149, 0.08), rgba(124, 58, 237, 0.12));
+  border: 2px solid var(--accent-purple);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.boss-count-box-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--accent-purple);
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.boss-count-box-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.boss-count-card {
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.boss-count-card.active {
+  border-color: #F59E0B;
+  background-color: #FFFBEB;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+.count-card-label {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.count-card-val {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--accent-navy);
+}
+
+.boss-count-card.active .count-card-val {
+  color: #D97706;
+}
+
+.title-list-subhead {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed var(--border-color);
+}
+
 /* Result Modal */
 .result-badge-icon {
   font-size: 3.5rem;
