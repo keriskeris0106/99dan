@@ -547,9 +547,109 @@
         } else {
           sampleClassStudents.push(data);
         }
+
+        if (currentUser && currentUser.role === 'student') {
+          if (currentUser.id === data.id || (currentUser.name === data.name && currentUser.inviteCode === data.inviteCode)) {
+            if (data.modeData) {
+              currentUser.modeData = {
+                gugudan: { ...(currentUser.modeData ? currentUser.modeData.gugudan : {}), ...(data.modeData.gugudan || {}) },
+                division: { ...(currentUser.modeData ? currentUser.modeData.division : {}), ...(data.modeData.division || {}) }
+              };
+            }
+            Object.keys(data).forEach(key => {
+              if (key !== 'modeData') currentUser[key] = data[key];
+            });
+            getUserModeData(currentUser, currentMode);
+            saveSessionUser(currentUser);
+          }
+        }
       });
       saveStorageData();
     }, err => console.warn("Firestore students listener err:", err));
+  }
+
+  // -------------------------------------------------------------------------
+  // Cloud Student Cross-Device Synchronization Helper
+  // -------------------------------------------------------------------------
+  async function syncStudentFromCloud(user) {
+    if (!user || user.role !== 'student') return user;
+    const invite = (user.inviteCode || '').trim();
+    const name = (user.name || '').trim();
+    if (!invite || !name) return user;
+
+    if (!user.id) {
+      user.id = `${invite}_${encodeURIComponent(name)}`;
+    }
+
+    if (!db) return user;
+
+    try {
+      await ensureFirebaseAuth();
+
+      const docKeyEncoded = `${invite}_${encodeURIComponent(name)}`;
+      const docKeyUnencoded = `${invite}_${name}`;
+
+      let stdSnap = await db.collection('students').doc(docKeyEncoded).get();
+      if (!stdSnap.exists) {
+        stdSnap = await db.collection('students').doc(docKeyUnencoded).get();
+      }
+
+      if (!stdSnap.exists) {
+        const qSnap = await db.collection('students')
+          .where('inviteCode', '==', invite)
+          .where('name', '==', name)
+          .limit(1)
+          .get();
+        if (!qSnap.empty) {
+          stdSnap = qSnap.docs[0];
+        }
+      }
+
+      if (stdSnap && stdSnap.exists) {
+        const cloudData = stdSnap.data();
+
+        if (cloudData.modeData) {
+          user.modeData = {
+            gugudan: {
+              ...(user.modeData ? user.modeData.gugudan : {}),
+              ...(cloudData.modeData.gugudan || {})
+            },
+            division: {
+              ...(user.modeData ? user.modeData.division : {}),
+              ...(cloudData.modeData.division || {})
+            }
+          };
+        }
+
+        Object.keys(cloudData).forEach(key => {
+          if (key !== 'modeData') {
+            user[key] = cloudData[key];
+          }
+        });
+
+        getUserModeData(user, currentMode);
+        allPlayersMap[user.id] = user;
+
+        const idx = sampleClassStudents.findIndex(s => s.id === user.id || (s.name === name && s.inviteCode === invite));
+        if (idx >= 0) {
+          sampleClassStudents[idx] = user;
+        } else {
+          sampleClassStudents.push(user);
+        }
+
+        if (currentUser && (currentUser.id === user.id || (currentUser.name === name && currentUser.inviteCode === invite))) {
+          Object.assign(currentUser, user);
+          saveSessionUser(currentUser);
+        }
+
+        saveStorageData();
+        refreshAllLiveViews();
+        console.log(`☁️ [Cross-Device Sync] Successfully synced data for '${name}' (${invite}) from Cloud Firestore`);
+      }
+    } catch (e) {
+      console.warn("syncStudentFromCloud warning:", e);
+    }
+    return user;
   }
 
   async function saveUserDataInList(user) {
@@ -2015,6 +2115,9 @@
       closeModal('loginModal');
       updateHeaderUI();
       showView('lobbyView');
+      if (activeSession.role === 'student') {
+        syncStudentFromCloud(activeSession);
+      }
     } else {
       openModal('loginModal');
       showView('lobbyView');
@@ -2087,36 +2190,17 @@
       const displayClassName = classInfo.className ? classInfo.className : '미설정';
       const studentDocKey = `${invite}_${encodeURIComponent(name)}`;
 
-      let studentUser = null;
+      let studentUser = {
+        id: studentDocKey,
+        name: name,
+        role: 'student',
+        className: displayClassName,
+        inviteCode: invite
+      };
 
-      if (db) {
-        try {
-          const stdSnap = await db.collection('students').doc(studentDocKey).get();
-          if (stdSnap.exists) {
-            studentUser = stdSnap.data();
-          }
-        } catch (e) {
-          console.warn("Firestore student doc fetch warning:", e);
-        }
-      }
-
-      if (!studentUser) {
-        studentUser = sampleClassStudents.find(
-          s => s.name === name && s.inviteCode === invite
-        );
-      }
-
-      if (!studentUser) {
-        studentUser = {
-          id: studentDocKey,
-          name: name,
-          role: 'student',
-          className: displayClassName,
-          inviteCode: invite
-        };
-      } else {
-        studentUser.className = displayClassName;
-      }
+      // ☁️ Cross-Device Multi-Tier Cloud Sync & Retrieval
+      studentUser = await syncStudentFromCloud(studentUser);
+      studentUser.className = displayClassName;
 
       getUserModeData(studentUser, currentMode);
       await saveUserDataInList(studentUser);
