@@ -28,7 +28,8 @@
       { level: 2, emoji: '🔥', name: '구구단 탐험가', reqDesc: '보스전 30회 도전', reqCount: 30 },
       { level: 3, emoji: '🛡️', name: '구구단 수호자', reqDesc: '보스전 50회 도전', reqCount: 50 },
       { level: 4, emoji: '⚔️', name: '구구단 기사단', reqDesc: '보스전 80회 도전', reqCount: 80 },
-      { level: 5, emoji: '👑', name: '구구단 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
+      { level: 5, emoji: '👑', name: '구구단 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 },
+      { level: 6, emoji: '🏆', name: '구구단 영웅', reqDesc: '보스전 500회 도전', reqCount: 500 }
     ],
     division: [
       { level: 0, emoji: '🐣', name: '나눗셈 수련생', reqDesc: '기본 부여', reqCount: 0 },
@@ -36,7 +37,8 @@
       { level: 2, emoji: '🔥', name: '나눗셈 탐험가', reqDesc: '보스전 30회 도전', reqCount: 30 },
       { level: 3, emoji: '🛡️', name: '나눗셈 수호자', reqDesc: '보스전 50회 도전', reqCount: 50 },
       { level: 4, emoji: '➗', name: '나눗셈 기사단', reqDesc: '보스전 80회 도전', reqCount: 80 },
-      { level: 5, emoji: '👑', name: '나눗셈 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 }
+      { level: 5, emoji: '👑', name: '나눗셈 정복자', reqDesc: '보스전 100회 도전', reqCount: 100 },
+      { level: 6, emoji: '🏆', name: '나눗셈 영웅', reqDesc: '보스전 500회 도전', reqCount: 500 }
     ]
   };
 
