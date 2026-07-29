@@ -1531,3 +1531,141 @@ body.in-dungeon {
 /* Utility Helpers */
 .hidden { display: none !important; }
 .text-center { text-align: center; }
+
+/* ------------------------------------------------------------------------- */
+/* 📱 Mobile Portrait Optimized Responsive Layouts (@media max-width: 768px) */
+/* ------------------------------------------------------------------------- */
+
+@media screen and (max-width: 768px) {
+  /* Main Container & Padding */
+  .app-container {
+    padding: 12px 10px;
+    max-width: 100vw;
+  }
+
+  /* Header & Mode Switcher */
+  .app-header {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 12px;
+    align-items: stretch;
+  }
+
+  .header-mode-switcher {
+    width: 100%;
+    display: flex;
+    gap: 6px;
+  }
+
+  .mode-switch-btn {
+    flex: 1;
+    text-align: center;
+    padding: 10px 8px;
+    font-size: 0.9rem;
+  }
+
+  .header-user-info {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* Main Lobby Cards & Buttons */
+  .lobby-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .game-card {
+    padding: 18px 14px;
+  }
+
+  /* Mini-Game View */
+  .game-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  .game-stats-bar {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .game-q-text {
+    font-size: 2.3rem !important;
+  }
+
+  .game-options-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .option-btn {
+    padding: 16px 10px;
+    font-size: 1.6rem;
+    min-height: 56px;
+  }
+
+  .game-tiles-grid {
+    gap: 8px;
+  }
+
+  .tile-btn {
+    padding: 12px 6px;
+    font-size: 1.4rem;
+    min-height: 50px;
+  }
+
+  /* Boss Dungeon View */
+  .boss-visual-zone {
+    height: 70px;
+  }
+
+  .boss-avatar-large {
+    font-size: 2.8rem;
+  }
+
+  .boss-q-prompt {
+    font-size: 2.4rem !important;
+  }
+
+  .boss-answers-grid {
+    gap: 10px;
+  }
+
+  .boss-option-btn {
+    padding: 14px 10px;
+    font-size: 1.6rem;
+    min-height: 54px;
+  }
+
+  /* Modals & Touch Targets */
+  .modal-card {
+    width: 95%;
+    max-width: 480px;
+    padding: 20px 14px;
+    margin: 10px auto;
+  }
+
+  .modal-actions-row {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .modal-actions-row .btn {
+    font-size: 0.95rem;
+    padding: 12px 10px;
+  }
+
+  /* Responsive Tables with Touch Scroll */
+  .table-responsive-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 12px;
+  }
+
+  .admin-table, .hall-table {
+    min-width: 600px;
+  }
+}

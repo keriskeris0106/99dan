@@ -2062,9 +2062,24 @@
       const displayClassName = classInfo.className ? classInfo.className : '미설정';
       const studentDocKey = `${invite}_${encodeURIComponent(name)}`;
 
-      let studentUser = sampleClassStudents.find(
-        s => s.name === name && s.inviteCode === invite
-      );
+      let studentUser = null;
+
+      if (db) {
+        try {
+          const stdSnap = await db.collection('students').doc(studentDocKey).get();
+          if (stdSnap.exists) {
+            studentUser = stdSnap.data();
+          }
+        } catch (e) {
+          console.warn("Firestore student doc fetch warning:", e);
+        }
+      }
+
+      if (!studentUser) {
+        studentUser = sampleClassStudents.find(
+          s => s.name === name && s.inviteCode === invite
+        );
+      }
 
       if (!studentUser) {
         studentUser = {
