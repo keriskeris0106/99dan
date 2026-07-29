@@ -2424,6 +2424,16 @@
       closeModal('chartModal');
     });
 
+    // Modal Backdrop Click (click outside card to close)
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+      backdrop.addEventListener('click', (e) => {
+        if (e.target === backdrop) {
+          if (backdrop.id === 'loginModal' && !currentUser) return;
+          closeModal(backdrop.id);
+        }
+      });
+    });
+
     // User Title Button Click
     document.getElementById('userTitleBtn').addEventListener('click', () => showTitleModal());
     document.getElementById('userBadgeContainer').addEventListener('click', (e) => {
