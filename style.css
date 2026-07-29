@@ -1624,9 +1624,10 @@ html, body {
     font-size: 0.88rem;
     font-weight: 800;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 120px;
+    color: var(--text-main);
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
 
   .user-role-badge {
@@ -1862,14 +1863,16 @@ html, body {
     display: none !important;
   }
 
-  .rank-table th:nth-child(1) { width: 24% !important; }
-  .rank-table th:nth-child(2) { width: 48% !important; }
-  .rank-table th:nth-child(4) { width: 28% !important; }
+  .rank-table th:nth-child(1) { width: 18% !important; }
+  .rank-table th:nth-child(2) { width: 60% !important; }
+  .rank-table th:nth-child(4) { width: 22% !important; }
 
   .rank-table td:nth-child(2), .mini-rank-table td:nth-child(2) {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    line-height: 1.35;
   }
 
   .triple-grid {
